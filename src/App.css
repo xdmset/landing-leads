@@ -1144,20 +1144,26 @@
   
   .payments-bar { 
     flex-direction: column; 
-    gap: 16px; 
-    padding: 20px; 
-    width: 90%;
+    gap: 14px; 
+    padding: 18px 22px 20px; 
+    width: min(90vw, 420px);
   }
 
   .payments-logos {
-    gap: 32px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 22px;
+    width: 100%;
+    justify-items: center;
   }
 
   .payments-logos img {
-    transform: scale(1.4);
+    height: 23px;
+    max-width: 128px;
+    transform: none;
   }
   .payments-logos img:hover {
-    transform: scale(1.5);
+    transform: none;
   }
   
   .form-section { 
@@ -1272,32 +1278,32 @@
 
   .payments-bar {
     flex-direction: column;
-    gap: 10px;
-    padding: 18px 24px 20px;
-    width: min(82vw, 330px);
+    gap: 12px;
+    padding: 18px 22px 20px;
+    width: min(86vw, 360px);
     border-radius: 38px;
   }
 
   .payments-logos {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
     align-items: center;
-    gap: 10px;
+    gap: 12px 20px;
     width: 100%;
-    overflow: visible;
-    padding: 4px 6px;
+    overflow: hidden;
+    padding: 2px 4px;
   }
 
   .payments-logos img {
-    flex: 1 1 0;
-    height: 18px;
-    max-width: 58px;
-    transform: scale(2.25);
+    height: 22px;
+    max-width: 124px;
+    transform: none;
     transform-origin: center;
   }
 
   .payments-logos img:hover {
-    transform: scale(2.25);
+    transform: none;
   }
 
   .cards-section {
