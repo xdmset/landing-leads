@@ -69,6 +69,16 @@ const content = {
     sending: 'SENDING...',
     sent: 'Thanks. We will contact you soon.',
     sendError: 'Something went wrong. Please try again.',
+    validation: {
+      fullNameRequired: 'Please enter your full name.',
+      emailRequired: 'Please enter your email.',
+      emailInvalid: 'Please enter a valid email address.',
+      phoneRequired: 'Please enter your phone number.',
+      countryRequired: 'Please select your country.',
+      stateRequired: 'Please select your state.',
+      howRequired: 'Please select how you heard about us.',
+      consentRequired: 'Please accept the contact authorization.',
+    },
     from: 'FROM',
     monthlyPayment: 'MONTHLY PAYMENT',
     noCredit: 'NO CREDIT CHECK | OWNER FINANCING',
@@ -115,6 +125,16 @@ const content = {
     sending: 'ENVIANDO...',
     sent: 'Gracias. Te contactaremos pronto.',
     sendError: 'Algo salió mal. Inténtalo de nuevo.',
+    validation: {
+      fullNameRequired: 'Ingresa tu nombre completo.',
+      emailRequired: 'Ingresa tu correo electrónico.',
+      emailInvalid: 'Ingresa un correo electrónico válido.',
+      phoneRequired: 'Ingresa tu número de teléfono.',
+      countryRequired: 'Selecciona tu país.',
+      stateRequired: 'Selecciona tu estado.',
+      howRequired: 'Selecciona cómo te enteraste de nosotros.',
+      consentRequired: 'Acepta la autorización de contacto.',
+    },
     from: 'DESDE',
     monthlyPayment: 'PAGO MENSUAL',
     noCredit: 'SIN VERIFICACIÓN DE CRÉDITO | FINANCIAMIENTO PROPIO',
@@ -263,10 +283,77 @@ function App() {
     document.getElementById('contact-form').scrollIntoView({ behavior: 'smooth' });
   };
 
+  const showFieldError = (field, message) => {
+    field.setCustomValidity(message);
+    field.reportValidity();
+    field.addEventListener('input', () => field.setCustomValidity(''), { once: true });
+  };
+
+  const validateLeadForm = (form) => {
+    const fields = form.elements;
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    fields.fullName.setCustomValidity('');
+    fields.email.setCustomValidity('');
+    fields.phone.setCustomValidity('');
+    fields.consent.setCustomValidity('');
+    setFormMessage('');
+
+    if (!fields.fullName.value.trim()) {
+      showFieldError(fields.fullName, t.validation.fullNameRequired);
+      return false;
+    }
+
+    if (!fields.email.value.trim()) {
+      showFieldError(fields.email, t.validation.emailRequired);
+      return false;
+    }
+
+    if (!emailPattern.test(fields.email.value.trim())) {
+      showFieldError(fields.email, t.validation.emailInvalid);
+      return false;
+    }
+
+    if (!fields.phone.value.trim()) {
+      showFieldError(fields.phone, t.validation.phoneRequired);
+      return false;
+    }
+
+    if (!selectedCountry) {
+      setFormStatus('error');
+      setFormMessage(t.validation.countryRequired);
+      return false;
+    }
+
+    if (!selectedState) {
+      setFormStatus('error');
+      setFormMessage(t.validation.stateRequired);
+      return false;
+    }
+
+    if (!selectedHow) {
+      setFormStatus('error');
+      setFormMessage(t.validation.howRequired);
+      return false;
+    }
+
+    if (!fields.consent.checked) {
+      showFieldError(fields.consent, t.validation.consentRequired);
+      return false;
+    }
+
+    return true;
+  };
+
   const submitLead = async (event) => {
     event.preventDefault();
 
     const form = event.currentTarget;
+
+    if (!validateLeadForm(form)) {
+      return;
+    }
+
     const formData = new FormData(form);
     const payload = {
       fullName: formData.get('fullName'),
@@ -552,7 +639,7 @@ function App() {
       >
         <div className="form-overlay" />
         <div className="form-inner">
-          <form className="form-form reveal" style={{ transitionDelay: '0s' }} onSubmit={submitLead}>
+          <form className="form-form reveal" style={{ transitionDelay: '0s' }} onSubmit={submitLead} noValidate>
             <div className="form-titles">
               <span className="form-title1">{t.formTitle1}</span>
               <span className="form-title2">
