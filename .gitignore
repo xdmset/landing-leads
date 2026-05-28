@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-ssr
+*.local
+backend/.env
+.venv
+*.mp4
+.vscode
+.idea
+.DS_Store
