@@ -92,7 +92,7 @@ const normalizeText = (value) => {
 const createLead = async (payload, req) => {
   const fullName = normalizeText(payload.fullName);
   const email = normalizeText(payload.email).toLowerCase();
-  const phone = normalizeText(payload.phone);
+  const phone = normalizeText(payload.phoneFull || payload.phone);
   const country = normalizeText(payload.country);
   const state = normalizeText(payload.state);
   const howHeard = normalizeText(payload.howHeard);
@@ -116,7 +116,6 @@ const createLead = async (payload, req) => {
     phoneCode: normalizeText(payload.phoneCode) || null,
     phoneCountry: normalizeText(payload.phoneCountry) || null,
     page: normalizeText(payload.page) || null,
-    userAgent: req.headers['user-agent'] || null,
     createdAt: new Date(),
   };
 
