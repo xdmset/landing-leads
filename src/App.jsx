@@ -356,12 +356,10 @@ function App() {
 
     const formData = new FormData(form);
     const phone = String(formData.get('phone') || '').trim();
-    const phoneFull = `${selectedLada.code}${phone.replace(/[^\d]/g, '')}`;
     const payload = {
       fullName: formData.get('fullName'),
       email: formData.get('email'),
-      phone: phoneFull,
-      phoneLocal: phone,
+      phone,
       phoneCode: selectedLada.code,
       phoneCountry: selectedLada.name,
       country: selectedCountry,
