@@ -171,6 +171,11 @@ function App() {
 
   const t = content[lang];
 
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.title = lang === 'en' ? 'My Lot in Mexico' : 'Mi Terreno en México';
+  }, [lang]);
+
   // 1. Efecto para escuchar el cambio de País y actualizar la lista de Estados
   useEffect(() => {
     setSelectedState(''); // Resetea el estado previo cada vez que cambia el país
