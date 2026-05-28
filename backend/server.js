@@ -313,7 +313,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'POST' && requestUrl.pathname === '/api/leads') {
+    if (req.method === 'POST' && ['/api/leads', '/leads'].includes(requestUrl.pathname)) {
       const payload = await readJsonBody(req);
       const insertedId = await createLead(payload, req);
 
@@ -321,8 +321,14 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'GET' && requestUrl.pathname.startsWith('/api/videos/')) {
-      const fileName = decodeURIComponent(requestUrl.pathname.slice('/api/videos/'.length));
+    const videoPrefix = requestUrl.pathname.startsWith('/api/videos/')
+      ? '/api/videos/'
+      : requestUrl.pathname.startsWith('/videos/')
+        ? '/videos/'
+        : null;
+
+    if (req.method === 'GET' && videoPrefix) {
+      const fileName = decodeURIComponent(requestUrl.pathname.slice(videoPrefix.length));
 
       if (!allowedVideos.has(fileName)) {
         sendJson(res, 404, { error: 'Video not found' });
