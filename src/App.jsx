@@ -651,8 +651,8 @@ function App() {
             </div>
             
             <div className="form-inputs">
-              <label>{t.fullName}<input name="fullName" type="text" placeholder={t.fullName} required /></label>
-              <label>{t.email}<input name="email" type="email" placeholder={t.email} required /></label>
+              <label>{t.fullName}<input name="fullName" type="text" placeholder={t.fullName} /></label>
+              <label>{t.email}<input name="email" type="text" inputMode="email" autoComplete="email" placeholder={t.email} /></label>
               
               {/* LADAS COMPONENTE PREMIUM DESPLEGABLE */}
               <label>{t.phone}
@@ -682,7 +682,7 @@ function App() {
                       </ul>
                     )}
                   </div>
-                  <input name="phone" type="tel" placeholder="(201) 555-0123" required />
+                  <input name="phone" type="tel" placeholder="(201) 555-0123" />
                 </div>
               </label>
 
@@ -772,7 +772,7 @@ function App() {
 
             <div className="form-actions">
               <label className="checkbox-label">
-                <input name="consent" type="checkbox" required />
+                <input name="consent" type="checkbox" />
                 <span>{t.consent}</span>
               </label>
               {formMessage && (
