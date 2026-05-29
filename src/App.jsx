@@ -16,7 +16,7 @@ const carouselVideos = [
 const mapVideo    = privateVideo('DESARROLLOS ENG.mp4');          
 const resortVideo = privateVideo('tomas desarrollos eng.mp4');    
 
-// BASE DE DATOS DE ESTADOS DINÁMICOS
+
 const mexicoStates = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas', 'Chihuahua', 
   'Coahuila', 'Colima', 'Ciudad de México', 'Durango', 'Guanajuato', 'Guerrero', 'Hidalgo', 'Jalisco', 
@@ -89,7 +89,7 @@ const content = {
       'miriam eng.png',
       'Carlos alcántara eng.png',
     ],
-    countries: ['Mexico', 'United States'], // Solo estos dos países
+    countries: ['Mexico', 'United States'], 
     howOptions: ['Cris & Trey', 'Paisa y Gringa', 'Social media (Instagram, TikTok, etc.)', 'Other']
   },
   es: {
@@ -145,7 +145,7 @@ const content = {
       'miriam esp.png',
       'Carlos alcántara esp.png',
     ],
-    countries: ['México', 'Estados Unidos'], // Solo estos dos países
+    countries: ['México', 'Estados Unidos'], 
     howOptions: ['Cris & Trey', 'Paisa y Gringa', 'Redes sociales (Instagram, TikTok, etc.)', 'Otro']
   },
 };
@@ -196,9 +196,9 @@ function App() {
     document.title = lang === 'en' ? 'My Lot in Mexico' : 'Mi Terreno en México';
   }, [lang]);
 
-  // 1. Efecto para escuchar el cambio de País y actualizar la lista de Estados
+ 
   useEffect(() => {
-    setSelectedState(''); // Resetea el estado previo cada vez que cambia el país
+    setSelectedState(''); 
     
     if (selectedCountry === 'México' || selectedCountry === 'Mexico') {
       setAvailableStates(mexicoStates);
@@ -209,7 +209,7 @@ function App() {
     }
   }, [selectedCountry]);
 
-  // 2. Traer ladas de la API al montar
+ 
   useEffect(() => {
     fetch('https://restcountries.com/v3.1/all?fields=name,idd,flag,translations')
       .then((res) => res.json())
@@ -219,7 +219,6 @@ function App() {
       .catch((err) => console.error('Error al consultar ladas de la API:', err));
   }, []);
 
-  // 3. Procesar ladas según idioma
   useEffect(() => {
     if (!countriesRaw.length) return;
 
@@ -437,7 +436,6 @@ function App() {
     };
   }, [showVideo]);
 
-  // Clics externos para cerrar dropdowns
   useEffect(() => {
     function handleClickOutside(event) {
       if (ladaRef.current && !ladaRef.current.contains(event.target)) setOpenLadaDrop(false);
@@ -449,7 +447,6 @@ function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Scroll reveal
   useEffect(() => {
     const els = document.querySelectorAll('.reveal');
     const io = new IntersectionObserver(
@@ -463,7 +460,7 @@ function App() {
     return () => io.disconnect();
   }, [lang]);
 
-  // Autoplay Hero
+  
   useEffect(() => {
     if (heroVideoRef.current && heroVideoLoaded) {
       heroVideoRef.current.play().catch(e => console.log('Autoplay blocked:', e));
@@ -497,7 +494,6 @@ function App() {
         </div>
       </header>
 
-      {/* HERO SECTION */}
       <section className="hero-section">
         <video
           ref={heroVideoRef}
@@ -655,7 +651,6 @@ function App() {
               <label>{t.fullName}<input name="fullName" type="text" placeholder={t.fullName} /></label>
               <label>{t.email}<input name="email" type="text" inputMode="email" autoComplete="email" placeholder={t.email} /></label>
               
-              {/* LADAS COMPONENTE PREMIUM DESPLEGABLE */}
               <label>{t.phone}
                 <div className="phone-input-container">
                   <div className="lux-dropdown" ref={ladaRef}>
@@ -688,7 +683,6 @@ function App() {
               </label>
 
               <div className="form-row">
-                {/* PAÍS - FILTRADO SOLO MÉXICO Y USA */}
                 <label>{t.country}
                   <div className="lux-dropdown" ref={countryRef}>
                     <div className="lux-trigger" onClick={() => setOpenCountryDrop(!openCountryDrop)}>
@@ -714,7 +708,6 @@ function App() {
                   </div>
                 </label>
 
-                {/* ESTADO - TOTALMENTE DINÁMICO CON SCROLL CONECTADO AL PAÍS */}
                 <label>{t.state}
                   <div className="lux-dropdown" ref={stateRef}>
                     <div className="lux-trigger" onClick={() => {
