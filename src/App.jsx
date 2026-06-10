@@ -95,7 +95,7 @@ const content = {
   es: {
     logo: '/CIUDAD MADERAS ESP BL.png',
     langLabel: 'ES',
-    headerTitle: 'La empresa inmobiliaria más grande de México',
+    headerTitle: 'La desarrolladora inmobiliaria más grande de México',
     trustedBy: 'CON LA CONFIANZA DE',
     satisfiedClients: 'CLIENTES SATISFECHOS',
     paymentsLabel: 'Pagos seguros a través de',
@@ -521,7 +521,7 @@ function App() {
         <div className="hero-content">
           <div className="hero-stats">
             <span className="trusted reveal" style={{ transitionDelay: '0.05s' }}>{t.trustedBy}</span>
-            <span className="hero-number reveal" style={{ transitionDelay: '0.18s' }}>+120,000</span>
+            <span className="hero-number reveal" style={{ transitionDelay: '0.18s' }}>+100,000</span>
             <span className="satisfied reveal" style={{ transitionDelay: '0.31s' }}>{t.satisfiedClients}</span>
           </div>
           <div className="payments-bar reveal" style={{ transitionDelay: '0.44s' }}>
