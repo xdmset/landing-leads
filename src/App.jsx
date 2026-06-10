@@ -39,7 +39,7 @@ const content = {
   en: {
     logo: '/CIUDAD MADERAS BLANCO INGLÉS.png',
     langLabel: 'EN',
-    headerTitle: "Mexico's largest real estate development company",
+    headerTitle: "The largest real estate developer in Mexico",
     trustedBy: 'TRUSTED BY',
     satisfiedClients: 'SATISFIED CLIENTS',
     paymentsLabel: 'Secure payments through',
