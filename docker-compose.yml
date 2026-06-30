@@ -1,0 +1,25 @@
+name: landing
+
+services:
+  landing-leads-frontend:
+    container_name: landing-leads-frontend
+    build: .
+    restart: unless-stopped
+    networks:
+      - proxy
+    env_file:
+      - .env
+
+  landing-leads-backend:
+    container_name: landing-leads-backend
+    build: ./backend
+    restart: unless-stopped
+    networks:
+      - proxy
+    env_file:
+      - backend/.env
+
+networks:
+  proxy:
+    external: true
+    name: proxy
