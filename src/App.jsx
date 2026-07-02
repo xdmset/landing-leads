@@ -222,7 +222,7 @@ function App() {
 
  
   useEffect(() => {
-    fetch('https://restcountries.com/v3.1/all?fields=name,idd,flag,translations')
+    fetch('/api/countries')
       .then((res) => res.json())
       .then((data) => {
         setCountriesRaw(data);

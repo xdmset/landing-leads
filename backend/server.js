@@ -134,9 +134,27 @@ const parseJsonResponse = async (response) => {
   }
 };
 
+const fetchCountryData = async () => {
+  const response = await fetch('https://restcountries.com/v3.1/all?fields=name,idd,flag,translations');
+  const data = await parseJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(`Rest Countries API failed: ${data?.message || response.statusText}`);
+  }
+
+  return data;
+};
+
+const createConfigError = (message) => {
+  const error = new Error(message);
+  error.statusCode = 503;
+  error.code = 'CONFIGURATION_REQUIRED';
+  return error;
+};
+
 const assertBackblazeConfig = () => {
   if (!KEY_ID || !APPLICATION_KEY) {
-    throw new Error('Missing BACKBLAZE_KEY_ID or BACKBLAZE_APPLICATION_KEY in backend/.env');
+    throw createConfigError('Missing BACKBLAZE_KEY_ID or BACKBLAZE_APPLICATION_KEY in backend/.env');
   }
 };
 
@@ -312,6 +330,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === 'GET' && requestUrl.pathname === '/api/countries') {
+      const countryData = await fetchCountryData();
+      sendJson(res, 200, countryData);
+      return;
+    }
+
     if (req.method === 'POST' && ['/api/leads', '/leads'].includes(requestUrl.pathname)) {
       const payload = await readJsonBody(req);
       const insertedId = await createLead(payload, req);
@@ -340,8 +364,18 @@ const server = http.createServer(async (req, res) => {
 
     sendJson(res, 404, { error: 'Not found' });
   } catch (error) {
-    console.error(error);
-    sendJson(res, error.statusCode || 500, { error: error.message || 'Internal server error' });
+    if (error.statusCode && error.statusCode < 500) {
+      console.warn(error.message);
+    } else if (error.code === 'CONFIGURATION_REQUIRED') {
+      console.warn(error.message);
+    } else {
+      console.error(error);
+    }
+
+    sendJson(res, error.statusCode || 500, {
+      error: error.message || 'Internal server error',
+      ...(error.code ? { code: error.code } : {}),
+    });
   }
 });
 

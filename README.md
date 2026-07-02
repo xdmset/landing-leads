@@ -2,6 +2,34 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Local Development
+
+Run the frontend and backend in separate terminals:
+
+```sh
+npm run dev
+npm run backend
+```
+
+The video endpoints stream private files from Backblaze B2. Create `backend/.env`
+from `backend/.env.example` and fill in the real values before opening the site:
+
+```sh
+cp backend/.env.example backend/.env
+```
+
+Required for video playback:
+
+```env
+BACKBLAZE_KEY_ID=...
+BACKBLAZE_APPLICATION_KEY=...
+BACKBLAZE_BUCKET_NAME=...
+BACKBLAZE_FILE_PREFIX=landing
+```
+
+If those values are missing, `/api/videos/...` returns a `503` configuration error
+instead of streaming the MP4.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
