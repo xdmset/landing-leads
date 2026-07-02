@@ -16,6 +16,15 @@ const carouselVideos = [
 const mapVideo    = privateVideo('DESARROLLOS ENG.mp4');          
 const resortVideo = privateVideo('tomas desarrollos eng.mp4');    
 
+const mobileHoverVideoDelayMs = 900;
+
+const getHoverVideoDelay = () => {
+  if (typeof window === 'undefined') return 0;
+  return window.matchMedia('(hover: none), (pointer: coarse), (max-width: 700px)').matches
+    ? mobileHoverVideoDelayMs
+    : 0;
+};
+
 
 const mexicoStates = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas', 'Chihuahua', 
@@ -168,11 +177,15 @@ function App() {
   const [showVideo, setShowVideo] = useState(false);
   const [centerHovered, setCenterHovered] = useState(false);
   const [rightHovered, setRightHovered] = useState(false);
+  const [centerVideoActive, setCenterVideoActive] = useState(false);
+  const [rightVideoActive, setRightVideoActive] = useState(false);
   const [formInView, setFormInView] = useState(false);
   const heroVideoRef = useRef(null);
   const videoRef = useRef(null);
   const centerHoverVideoRef = useRef(null);
   const rightHoverVideoRef = useRef(null);
+  const centerHoverDelayRef = useRef(null);
+  const rightHoverDelayRef = useRef(null);
   const centerCardRef = useRef(null);
   const rightCardRef = useRef(null);
 
@@ -509,11 +522,20 @@ function App() {
     if (!video) return;
 
     if (centerHovered && !showVideo) {
-      playMutedVideo(video);
-    } else {
-      video.pause();
-      video.currentTime = 0;
+      centerHoverDelayRef.current = setTimeout(() => {
+        setCenterVideoActive(true);
+        playMutedVideo(video);
+      }, getHoverVideoDelay());
+
+      return () => {
+        clearTimeout(centerHoverDelayRef.current);
+      };
     }
+
+    clearTimeout(centerHoverDelayRef.current);
+    setCenterVideoActive(false);
+    video.pause();
+    video.currentTime = 0;
   }, [centerHovered, showVideo]);
 
   useEffect(() => {
@@ -522,11 +544,20 @@ function App() {
     if (!video) return;
 
     if (rightHovered && !showVideo) {
-      playMutedVideo(video);
-    } else {
-      video.pause();
-      video.currentTime = 0;
+      rightHoverDelayRef.current = setTimeout(() => {
+        setRightVideoActive(true);
+        playMutedVideo(video);
+      }, getHoverVideoDelay());
+
+      return () => {
+        clearTimeout(rightHoverDelayRef.current);
+      };
     }
+
+    clearTimeout(rightHoverDelayRef.current);
+    setRightVideoActive(false);
+    video.pause();
+    video.currentTime = 0;
   }, [rightHovered, showVideo]);
 
   return (
@@ -662,7 +693,7 @@ function App() {
               <span className="card-center-dev">{t.developments}</span>
               <span className="card-center-across">{t.acrossMexico}</span>
             </div>
-            <div className={`card-hover-video ${centerHovered && !showVideo ? 'is-active' : ''}`}>
+            <div className={`card-hover-video ${centerVideoActive && !showVideo ? 'is-active' : ''}`}>
               <video
                 ref={centerHoverVideoRef}
                 src={mapVideo}
@@ -691,7 +722,7 @@ function App() {
               <span className="card-right-resort">{t.resort}</span>
               <span className="card-right-style">{t.style}</span>
             </div>
-            <div className={`card-hover-video ${rightHovered && !showVideo ? 'is-active' : ''}`}>
+            <div className={`card-hover-video ${rightVideoActive && !showVideo ? 'is-active' : ''}`}>
               <video
                 ref={rightHoverVideoRef}
                 src={resortVideo}
