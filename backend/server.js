@@ -134,15 +134,76 @@ const parseJsonResponse = async (response) => {
   }
 };
 
-const fetchCountryData = async () => {
-  const response = await fetch('https://restcountries.com/v3.1/all?fields=name,idd,flag,translations');
+const isoCodeToFlag = (code) => {
+  if (!/^[A-Z]{2}$/.test(code)) return '🏳️';
+
+  return [...code]
+    .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
+    .join('');
+};
+
+const normalizeDialCode = (code) => {
+  const compactCode = String(code || '').replace(/\s+/g, '');
+
+  if (!compactCode) return '';
+  return compactCode.startsWith('+') ? compactCode : `+${compactCode}`;
+};
+
+const normalizeCountryForLada = ({ name, spanishName, flag, dialCode }) => {
+  const code = normalizeDialCode(dialCode);
+
+  if (!name || !code) return null;
+
+  return {
+    name: { common: name },
+    idd: { root: code, suffixes: [''] },
+    flag: flag || '🏳️',
+    translations: spanishName ? { spa: { common: spanishName } } : {},
+  };
+};
+
+const fetchCountriesDevData = async () => {
+  const response = await fetch('https://countries.dev/countries');
   const data = await parseJsonResponse(response);
 
-  if (!response.ok) {
-    throw new Error(`Rest Countries API failed: ${data?.message || response.statusText}`);
+  if (!response.ok || !Array.isArray(data)) {
+    throw new Error(`countries.dev API failed: ${data?.message || response.statusText}`);
   }
 
-  return data;
+  return data
+    .map((country) => normalizeCountryForLada({
+      name: country.name,
+      spanishName: country.translations?.es,
+      flag: country.flag,
+      dialCode: country.callingCodes?.[0],
+    }))
+    .filter(Boolean);
+};
+
+const fetchCountriesNowData = async () => {
+  const response = await fetch('https://countriesnow.space/api/v0.1/countries/codes');
+  const data = await parseJsonResponse(response);
+
+  if (!response.ok || data?.error || !Array.isArray(data?.data)) {
+    throw new Error(`CountriesNow API failed: ${data?.msg || response.statusText}`);
+  }
+
+  return data.data
+    .map((country) => normalizeCountryForLada({
+      name: country.name,
+      flag: isoCodeToFlag(country.code),
+      dialCode: country.dial_code,
+    }))
+    .filter(Boolean);
+};
+
+const fetchCountryData = async () => {
+  try {
+    return await fetchCountriesDevData();
+  } catch (primaryError) {
+    console.warn(primaryError.message);
+    return fetchCountriesNowData();
+  }
 };
 
 const createConfigError = (message) => {

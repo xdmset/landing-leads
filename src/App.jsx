@@ -168,10 +168,11 @@ function App() {
   const [showVideo, setShowVideo] = useState(false);
   const [centerHovered, setCenterHovered] = useState(false);
   const [rightHovered, setRightHovered] = useState(false);
-  const [heroVideoLoaded, setHeroVideoLoaded] = useState(false);
   const [formInView, setFormInView] = useState(false);
   const heroVideoRef = useRef(null);
   const videoRef = useRef(null);
+  const centerHoverVideoRef = useRef(null);
+  const rightHoverVideoRef = useRef(null);
   const centerCardRef = useRef(null);
   const rightCardRef = useRef(null);
 
@@ -233,6 +234,15 @@ function App() {
   useEffect(() => {
     if (!countriesRaw.length) return;
 
+    const priorityCountries = new Map([
+      ['Mexico', 0],
+      ['México', 0],
+      ['United States', 1],
+      ['United States of America', 1],
+      ['Estados Unidos', 1],
+      ['Estados Unidos de América', 1],
+    ]);
+
     const formatted = countriesRaw
       .map((country) => {
         const root = country.idd?.root || '';
@@ -251,7 +261,13 @@ function App() {
         };
       })
       .filter((c) => c.code && c.code.length <= 5)
-      .sort((a, b) => a.name.localeCompare(b.name, lang));
+      .sort((a, b) => {
+        const priorityA = priorityCountries.get(a.name) ?? 99;
+        const priorityB = priorityCountries.get(b.name) ?? 99;
+
+        if (priorityA !== priorityB) return priorityA - priorityB;
+        return a.name.localeCompare(b.name, lang);
+      });
 
     setCountryCodes(formatted);
 
@@ -281,6 +297,18 @@ function App() {
   const prev = () => triggerCarousel((carouselIdx - 1 + t.carouselImages.length) % t.carouselImages.length);
 
   const openVideo = () => setShowVideo(true);
+
+  const playMutedVideo = (video) => {
+    if (!video) return;
+
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+
+    video.play().catch((error) => {
+      console.log('Autoplay blocked:', error);
+    });
+  };
 
   const closeVideo = () => {
     if (videoRef.current) {
@@ -471,12 +499,35 @@ function App() {
     return () => io.disconnect();
   }, [lang]);
 
-  
   useEffect(() => {
-    if (heroVideoRef.current && heroVideoLoaded) {
-      heroVideoRef.current.play().catch(e => console.log('Autoplay blocked:', e));
+    playMutedVideo(heroVideoRef.current);
+  }, []);
+
+  useEffect(() => {
+    const video = centerHoverVideoRef.current;
+
+    if (!video) return;
+
+    if (centerHovered && !showVideo) {
+      playMutedVideo(video);
+    } else {
+      video.pause();
+      video.currentTime = 0;
     }
-  }, [heroVideoLoaded]);
+  }, [centerHovered, showVideo]);
+
+  useEffect(() => {
+    const video = rightHoverVideoRef.current;
+
+    if (!video) return;
+
+    if (rightHovered && !showVideo) {
+      playMutedVideo(video);
+    } else {
+      video.pause();
+      video.currentTime = 0;
+    }
+  }, [rightHovered, showVideo]);
 
   return (
     <main className="page-shell">
@@ -513,8 +564,11 @@ function App() {
           autoPlay
           loop
           muted
+          defaultMuted
           playsInline
-          onLoadedData={() => setHeroVideoLoaded(true)}
+          preload="auto"
+          poster="/CMCQROO_CD_CONJUNTO_HD -view playa de olas.jpg"
+          onCanPlay={() => playMutedVideo(heroVideoRef.current)}
         />
         <div className="hero-overlay-top" />
         <div className="hero-overlay-bottom" />
@@ -608,11 +662,18 @@ function App() {
               <span className="card-center-dev">{t.developments}</span>
               <span className="card-center-across">{t.acrossMexico}</span>
             </div>
-            {centerHovered && !showVideo && (
-              <div className="card-hover-video">
-                <video src={mapVideo} autoPlay loop muted playsInline />
-              </div>
-            )}
+            <div className={`card-hover-video ${centerHovered && !showVideo ? 'is-active' : ''}`}>
+              <video
+                ref={centerHoverVideoRef}
+                src={mapVideo}
+                loop
+                muted
+                defaultMuted
+                playsInline
+                preload="auto"
+                poster="/mapa portada.png"
+              />
+            </div>
           </div>
 
           {/* CARD 3 - LIVE RESORT STYLE */}
@@ -630,11 +691,18 @@ function App() {
               <span className="card-right-resort">{t.resort}</span>
               <span className="card-right-style">{t.style}</span>
             </div>
-            {rightHovered && !showVideo && (
-              <div className="card-hover-video">
-                <video src={resortVideo} autoPlay loop muted playsInline />
-              </div>
-            )}
+            <div className={`card-hover-video ${rightHovered && !showVideo ? 'is-active' : ''}`}>
+              <video
+                ref={rightHoverVideoRef}
+                src={resortVideo}
+                loop
+                muted
+                defaultMuted
+                playsInline
+                preload="auto"
+                poster="/portada amenidades.png"
+              />
+            </div>
           </div>
         </div>
       </section>
