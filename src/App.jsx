@@ -162,12 +162,12 @@ const content = {
 function App() {
   // Snippet de tracking 
   useEffect(() => {
-    const existing = document.querySelector('script[data-campaign-token="mkc_03d15069570c2e93cf2856dfb557f49ddf1735467e315e2f"]')
+    const existing = document.querySelector('script[data-campaign-token="mkc_5f185a3b4510f7b3f02d12a8176ed436d686fc513b1abf6d"]')
     if (existing) return
 
     const s = document.createElement('script')
-    s.src = 'https://studioback.onrender.com/track/v1.js'
-    s.setAttribute('data-campaign-token', 'mkc_03d15069570c2e93cf2856dfb557f49ddf1735467e315e2f')
+    s.src = 'https://api.maderasstudio.com/track/v1.js'
+    s.setAttribute('data-campaign-token', 'mkc_5f185a3b4510f7b3f02d12a8176ed436d686fc513b1abf6d')
     s.defer = true
     document.body.appendChild(s)
   }, [])
