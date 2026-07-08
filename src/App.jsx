@@ -162,12 +162,12 @@ const content = {
 function App() {
   // Snippet de tracking 
   useEffect(() => {
-    const existing = document.querySelector('script[data-campaign-token="ct_8f70821c51259f26fa74aefb"]')
+    const existing = document.querySelector('script[data-campaign-token="mkc_03d15069570c2e93cf2856dfb557f49ddf1735467e315e2f"]')
     if (existing) return
 
     const s = document.createElement('script')
     s.src = 'https://studioback.onrender.com/track/v1.js'
-    s.setAttribute('data-campaign-token', 'ct_8f70821c51259f26fa74aefb')
+    s.setAttribute('data-campaign-token', 'mkc_03d15069570c2e93cf2856dfb557f49ddf1735467e315e2f')
     s.defer = true
     document.body.appendChild(s)
   }, [])
