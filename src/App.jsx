@@ -78,6 +78,7 @@ const content = {
     sending: 'SENDING...',
     sent: 'Thanks. We will contact you soon.',
     sendError: 'Something went wrong. Please try again.',
+    duplicateLead: 'This name or email has already been registered.',
     validation: {
       fullNameRequired: 'Please enter your full name.',
       emailRequired: 'Please enter your email.',
@@ -134,6 +135,7 @@ const content = {
     sending: 'ENVIANDO...',
     sent: 'Gracias. Te contactaremos pronto.',
     sendError: 'Algo salió mal. Inténtalo de nuevo.',
+    duplicateLead: 'Este nombre o correo ya fue registrado.',
     validation: {
       fullNameRequired: 'Ingresa tu nombre completo.',
       emailRequired: 'Ingresa tu correo electrónico.',
@@ -202,6 +204,7 @@ function App() {
   const howRef = useRef(null);
   const [formStatus, setFormStatus] = useState('idle');
   const [formMessage, setFormMessage] = useState('');
+  const isSubmittingLeadRef = useRef(false);
 
   const t = content[lang];
 
@@ -388,6 +391,10 @@ function App() {
   const submitLead = async (event) => {
     event.preventDefault();
 
+    if (isSubmittingLeadRef.current || formStatus === 'sending') {
+      return;
+    }
+
     const form = event.currentTarget;
 
     if (!validateLeadForm(form)) {
@@ -410,6 +417,7 @@ function App() {
       page: window.location.href,
     };
 
+    isSubmittingLeadRef.current = true;
     setFormStatus('sending');
     setFormMessage('');
 
@@ -423,7 +431,10 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Lead request failed');
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(errorData.error || 'Lead request failed');
+        error.code = errorData.code;
+        throw error;
       }
 
       form.reset();
@@ -435,7 +446,9 @@ function App() {
     } catch (error) {
       console.error('Error sending lead:', error);
       setFormStatus('error');
-      setFormMessage(t.sendError);
+      setFormMessage(error.code === 'LEAD_DUPLICATE' ? t.duplicateLead : t.sendError);
+    } finally {
+      isSubmittingLeadRef.current = false;
     }
   };
 

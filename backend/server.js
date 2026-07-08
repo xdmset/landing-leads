@@ -50,6 +50,7 @@ const allowedVideos = new Set([
 let accountAuthCache = null;
 const filePathCache = new Map();
 let mongoClientPromise = null;
+let leadIndexesPromise = null;
 
 const sendJson = (res, statusCode, body) => {
   res.writeHead(statusCode, {
@@ -89,9 +90,48 @@ const normalizeText = (value) => {
   return typeof value === 'string' ? value.trim() : '';
 };
 
-const createLead = async (payload, req) => {
+const normalizeLeadKey = (value) => {
+  return normalizeText(value).replace(/\s+/g, ' ').toLocaleLowerCase('es-MX');
+};
+
+const createDuplicateLeadError = () => {
+  const error = new Error('This name or email has already been registered');
+  error.statusCode = 409;
+  error.code = 'LEAD_DUPLICATE';
+  return error;
+};
+
+const ensureLeadIndexes = async (collection) => {
+  if (!leadIndexesPromise) {
+    leadIndexesPromise = Promise.all([
+      collection.createIndex(
+        { normalizedEmail: 1 },
+        {
+          unique: true,
+          partialFilterExpression: { normalizedEmail: { $type: 'string' } },
+        }
+      ),
+      collection.createIndex(
+        { normalizedFullName: 1 },
+        {
+          unique: true,
+          partialFilterExpression: { normalizedFullName: { $type: 'string' } },
+        }
+      ),
+    ]).catch((error) => {
+      leadIndexesPromise = null;
+      throw error;
+    });
+  }
+
+  await leadIndexesPromise;
+};
+
+const createLead = async (payload) => {
   const fullName = normalizeText(payload.fullName);
   const email = normalizeText(payload.email).toLowerCase();
+  const normalizedFullName = normalizeLeadKey(fullName);
+  const normalizedEmail = normalizeLeadKey(email);
   const phone = normalizeText(payload.phone);
   const country = normalizeText(payload.country);
   const state = normalizeText(payload.state);
@@ -104,9 +144,27 @@ const createLead = async (payload, req) => {
   }
 
   const db = await getMongoDb();
+  const collection = db.collection(LEADS_COLLECTION);
+  await ensureLeadIndexes(collection);
+
+  const existingLead = await collection.findOne({
+    $or: [
+      { normalizedEmail },
+      { normalizedFullName },
+      { email },
+      { fullName: { $regex: `^${fullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } },
+    ],
+  });
+
+  if (existingLead) {
+    throw createDuplicateLeadError();
+  }
+
   const document = {
     fullName,
+    normalizedFullName,
     email,
+    normalizedEmail,
     phone,
     country,
     state,
@@ -119,9 +177,17 @@ const createLead = async (payload, req) => {
     createdAt: new Date(),
   };
 
-  const result = await db.collection(LEADS_COLLECTION).insertOne(document);
+  try {
+    const result = await collection.insertOne(document);
 
-  return result.insertedId;
+    return result.insertedId;
+  } catch (error) {
+    if (error.code === 11000) {
+      throw createDuplicateLeadError();
+    }
+
+    throw error;
+  }
 };
 
 const parseJsonResponse = async (response) => {
@@ -399,7 +465,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && ['/api/leads', '/leads'].includes(requestUrl.pathname)) {
       const payload = await readJsonBody(req);
-      const insertedId = await createLead(payload, req);
+      const insertedId = await createLead(payload);
 
       sendJson(res, 201, { ok: true, id: insertedId.toString() });
       return;
