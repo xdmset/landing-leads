@@ -100,7 +100,7 @@ const content = {
       'Carlos alcántara eng.png',
     ],
     countries: ['Mexico', 'United States'], 
-    howOptions: ['Cris & Trey', 'Paisa y Gringa', 'Social media (Instagram, TikTok, etc.)', 'Other']
+    howOptions: ['Cris & Trey', 'Paisa y Gringa', 'Yesenia Barraza', 'Social media (Instagram, TikTok, etc.)', 'Other']
   },
   es: {
     logo: '/CIUDAD MADERAS ESP BL.png',
@@ -157,7 +157,7 @@ const content = {
       'Carlos alcántara esp.png',
     ],
     countries: ['México', 'Estados Unidos'], 
-    howOptions: ['Cris & Trey', 'Paisa y Gringa', 'Redes sociales (Instagram, TikTok, etc.)', 'Otro']
+    howOptions: ['Cris & Trey', 'Paisa y Gringa', 'Yesenia Barraza', 'Redes sociales (Instagram, TikTok, etc.)', 'Otro']
   },
 };
 
