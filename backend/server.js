@@ -137,7 +137,8 @@ const createLead = async (payload) => {
   const state = normalizeText(payload.state);
   const howHeard = normalizeText(payload.howHeard);
 
-  if (!fullName || !email || !phone || !country || !state || !howHeard || !payload.consent) {
+  // country and state are optional: the landing form no longer asks for them.
+  if (!fullName || !email || !phone || !howHeard || !payload.consent) {
     const error = new Error('Missing required lead fields');
     error.statusCode = 400;
     throw error;
@@ -166,8 +167,8 @@ const createLead = async (payload) => {
     email,
     normalizedEmail,
     phone,
-    country,
-    state,
+    country: country || null,
+    state: state || null,
     howHeard,
     consent: Boolean(payload.consent),
     language: normalizeText(payload.language) || null,

@@ -16,6 +16,17 @@ const carouselVideos = [
 const mapVideo    = privateVideo('DESARROLLOS ENG.mp4');          
 const resortVideo = privateVideo('tomas desarrollos eng.mp4');    
 
+const defaultPhoneCodes = [
+  { code: '+1', flag: '🇺🇸', name: 'United States' },
+  { code: '+52', flag: '🇲🇽', name: 'México' },
+];
+const galleryImages = [
+  {"src": "/gallery/family-club.webp", "type": "developments", "es": "Family Club · Cancún", "en": "Family Club · Cancún", "description": {"es": "La vida que imaginabas, en el Caribe mexicano.", "en": "The lifestyle you imagined, in the Mexican Caribbean."}, "width": 1600, "height": 900, "render": true, "featured": true},
+  {"src": "/gallery/antara.webp", "type": "homes", "es": "Casa modelo Antara", "en": "Antara home model", "description": {"es": "Arquitectura para una nueva etapa.", "en": "Architecture for a new chapter."}, "width": 1600, "height": 1600, "render": true, "featured": false},
+  {"src": "/gallery/interior.webp", "type": "homes", "es": "Espacios para vivir", "en": "Spaces to live in", "description": {"es": "Tu hogar, desde adentro.", "en": "Your home, from the inside."}, "width": 905, "height": 517, "render": true, "featured": false},
+  {"src": "/gallery/aqua.webp", "type": "homes", "es": "Casa modelo Aqua", "en": "Aqua home model", "description": {"es": "Una fachada con personalidad propia.", "en": "A home with its own personality."}, "width": 1202, "height": 1600, "render": true, "featured": false},
+];
+
 const mobileHoverVideoDelayMs = 900;
 
 const getHoverVideoDelay = () => {
@@ -26,28 +37,23 @@ const getHoverVideoDelay = () => {
 };
 
 
-const mexicoStates = [
-  'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas', 'Chihuahua', 
-  'Coahuila', 'Colima', 'Ciudad de México', 'Durango', 'Guanajuato', 'Guerrero', 'Hidalgo', 'Jalisco', 
-  'México', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca', 'Puebla', 'Querétaro', 
-  'Quintana Roo', 'San Luis Potosí', 'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 
-  'Veracruz', 'Yucatán', 'Zacatecas'
-];
-
-const usStates = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 
-  'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 
-  'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 
-  'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 
-  'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 
-  'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 
-  'Wisconsin', 'Wyoming'
-];
-
 const content = {
   en: {
+    moreInfo: 'I want more information',
+    clientsPurchased: 'WHO HAVE ALREADY PURCHASED A LOT OR HOME WITH US',
+    galleryEyebrow: 'YOUR NEXT CHAPTER STARTS HERE',
+    galleryTitle: 'Homes and lots in Mexico',
+    gallerySubtitle: 'No credit check. No banks. Direct financing from $149 USD per month.*',
+    galleryAll: 'All',
+    galleryHomes: 'Homes',
+    galleryDevelopments: 'Developments',
+    galleryView: 'View image',
+    galleryClose: 'Close gallery',
+    galleryPrevious: 'Previous image',
+    galleryNext: 'Next image',
+    renderLabel: 'Representative render',
+    pricingNote: '*Starting monthly payment applies to selected lots. Home pricing is quoted separately. Subject to availability, down payment, term and exchange rate. Restrictions apply.',
     logo: '/CIUDAD MADERAS BLANCO INGLÉS.png',
-    langLabel: 'EN',
     headerTitle: "The largest real estate developer in Mexico",
     trustedBy: 'TRUSTED BY',
     satisfiedClients: 'SATISFIED CLIENTS',
@@ -58,7 +64,7 @@ const content = {
     everyone: 'EVERYONE',
     developments: 'DEVELOPMENTS',
     acrossMexico: 'ACROSS MEXICO',
-    builtYour: 'BUILT YOUR',
+    builtYour: 'BUILD YOUR',
     home: 'HOME',
     live: 'LIVE',
     resort: 'RESORT',
@@ -67,12 +73,6 @@ const content = {
     fullName: 'Full name',
     email: 'Email',
     phone: 'Phone number',
-    country: 'Country',
-    state: 'State',
-    howHeard: 'How did you hear about us?',
-    selectCountry: 'Select Country',
-    selectState: 'Select State',
-    selectHow: 'Select an option',
     consent: 'I agree to be contacted through any of the provided means to receive information.',
     send: 'SEND',
     sending: 'SENDING...',
@@ -84,9 +84,6 @@ const content = {
       emailRequired: 'Please enter your email.',
       emailInvalid: 'Please enter a valid email address.',
       phoneRequired: 'Please enter your phone number.',
-      countryRequired: 'Please select your country.',
-      stateRequired: 'Please select your state.',
-      howRequired: 'Please select how you heard about us.',
       consentRequired: 'Please accept the contact authorization.',
     },
     from: 'FROM',
@@ -94,17 +91,28 @@ const content = {
     noCredit: 'NO CREDIT CHECK | OWNER FINANCING',
     footer: 'Copyright Ciudad Maderas | Representative information and images subject to change without prior notice. Suggested furniture. Restrictions apply. | Blvd. Bernardo Quintana #160, Suite 5 and 6, Carretas Neighborhood, Querétaro, Qro. | Privacy Notice | Terms and Conditions',
     carouselImages: [
-      'testimonio eng1.png', 
-      'Luis Castillo Eng.png',
-      'miriam eng.png',
-      'Carlos alcántara eng.png',
+      'gallery/testimonio-en.webp',
+      'gallery/luis-en.webp',
+      'gallery/miriam-en.webp',
+      'gallery/carlos-en.webp',
     ],
-    countries: ['Mexico', 'United States'], 
-    howOptions: ['Cris & Trey', 'Paisa y Gringa', 'Yesenia Barraza', 'Social media (Instagram, TikTok, etc.)', 'Other']
   },
   es: {
+    moreInfo: 'Quiero más información',
+    clientsPurchased: 'QUE YA COMPRARON SU TERRENO O CASA CON NOSOTROS',
+    galleryEyebrow: 'TU PRÓXIMA HISTORIA EMPIEZA AQUÍ',
+    galleryTitle: 'Casas y terrenos en México',
+    gallerySubtitle: 'Sin revisión de buró. Sin bancos. Con financiamiento directo desde $149 USD al mes.*',
+    galleryAll: 'Todo',
+    galleryHomes: 'Casas',
+    galleryDevelopments: 'Desarrollos',
+    galleryView: 'Ver imagen',
+    galleryClose: 'Cerrar galería',
+    galleryPrevious: 'Imagen anterior',
+    galleryNext: 'Siguiente imagen',
+    renderLabel: 'Render representativo',
+    pricingNote: '*Mensualidad desde para terrenos seleccionados. Las casas se cotizan por separado. Sujeto a disponibilidad, enganche, plazo y tipo de cambio. Aplican restricciones.',
     logo: '/CIUDAD MADERAS ESP BL.png',
-    langLabel: 'ES',
     headerTitle: 'La desarrolladora inmobiliaria más grande de México',
     trustedBy: 'CON LA CONFIANZA DE',
     satisfiedClients: 'CLIENTES SATISFECHOS',
@@ -124,12 +132,6 @@ const content = {
     fullName: 'Nombre completo',
     email: 'Correo electrónico',
     phone: 'Número de teléfono',
-    country: 'País',
-    state: 'Estado',
-    howHeard: '¿Cómo te enteraste de nosotros?',
-    selectCountry: 'Selecciona País',
-    selectState: 'Selecciona Estado',
-    selectHow: 'Selecciona una opción',
     consent: 'Acepto ser contactado a través de cualquiera de los medios proporcionados para recibir información.',
     send: 'ENVIAR',
     sending: 'ENVIANDO...',
@@ -141,9 +143,6 @@ const content = {
       emailRequired: 'Ingresa tu correo electrónico.',
       emailInvalid: 'Ingresa un correo electrónico válido.',
       phoneRequired: 'Ingresa tu número de teléfono.',
-      countryRequired: 'Selecciona tu país.',
-      stateRequired: 'Selecciona tu estado.',
-      howRequired: 'Selecciona cómo te enteraste de nosotros.',
       consentRequired: 'Acepta la autorización de contacto.',
     },
     from: 'DESDE',
@@ -151,18 +150,16 @@ const content = {
     noCredit: 'SIN VERIFICACIÓN DE CRÉDITO | FINANCIAMIENTO PROPIO',
     footer: 'Copyright Ciudad Maderas | Información e imágenes representativas sujetas a cambio sin previo aviso. Mobiliario sugerido. Aplican restricciones. | Blvd. Bernardo Quintana #160, Suite 5 y 6, Col. Carretas, Querétaro, Qro. | Aviso de Privacidad | Términos y Condiciones',
     carouselImages: [
-      'testimonio esp.png', 
-      'Luis Castillo Esp.png',
-      'miriam esp.png',
-      'Carlos alcántara esp.png',
+      'gallery/testimonio-es.webp',
+      'gallery/luis-es.webp',
+      'gallery/miriam-es.webp',
+      'gallery/carlos-es.webp',
     ],
-    countries: ['México', 'Estados Unidos'], 
-    howOptions: ['Cris & Trey', 'Paisa y Gringa', 'Yesenia Barraza', 'Redes sociales (Instagram, TikTok, etc.)', 'Otro']
   },
 };
 
 function App() {
-  const [lang, setLang] = useState('en');
+  const [lang, setLang] = useState('es');
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [carouselAnimating, setCarouselAnimating] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
@@ -170,7 +167,9 @@ function App() {
   const [rightHovered, setRightHovered] = useState(false);
   const [centerVideoActive, setCenterVideoActive] = useState(false);
   const [rightVideoActive, setRightVideoActive] = useState(false);
-  const [formInView, setFormInView] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
+  const galleryDialogRef = useRef(null);
+  const filteredGallery = galleryImages;
   const heroVideoRef = useRef(null);
   const videoRef = useRef(null);
   const centerHoverVideoRef = useRef(null);
@@ -182,26 +181,10 @@ function App() {
 
   // LADAS DESDE LA API
   const [countriesRaw, setCountriesRaw] = useState([]);
-  const [countryCodes, setCountryCodes] = useState([]);
-  const [selectedLada, setSelectedLada] = useState({ code: '+52', flag: '🇲🇽', name: 'México' });
-  const [openLadaDrop, setOpenLadaDrop] = useState(false);
-  const ladaRef = useRef(null);
+  const [countryCodes, setCountryCodes] = useState(defaultPhoneCodes);
+  const [selectedLada, setSelectedLada] = useState({ code: '+1', flag: '🇺🇸', name: 'United States' });
 
-  // DROPDOWNS PERSONALIZADOS ACTUALIZADOS
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [openCountryDrop, setOpenCountryDrop] = useState(false);
-  const countryRef = useRef(null);
 
-  const [selectedState, setSelectedState] = useState('');
-  const [openStateDrop, setOpenStateDrop] = useState(false);
-  const stateRef = useRef(null);
-  
-  // Listado dinámico de estados según el país seleccionado
-  const [availableStates, setAvailableStates] = useState([]);
-
-  const [selectedHow, setSelectedHow] = useState('');
-  const [openHowDrop, setOpenHowDrop] = useState(false);
-  const howRef = useRef(null);
   const [formStatus, setFormStatus] = useState('idle');
   const [formMessage, setFormMessage] = useState('');
   const isSubmittingLeadRef = useRef(false);
@@ -215,23 +198,10 @@ function App() {
 
  
   useEffect(() => {
-    setSelectedState(''); 
-    
-    if (selectedCountry === 'México' || selectedCountry === 'Mexico') {
-      setAvailableStates(mexicoStates);
-    } else if (selectedCountry === 'Estados Unidos' || selectedCountry === 'United States') {
-      setAvailableStates(usStates);
-    } else {
-      setAvailableStates([]);
-    }
-  }, [selectedCountry]);
-
- 
-  useEffect(() => {
     fetch('/api/countries')
-      .then((res) => res.json())
+      .then((res) => { if (!res.ok) throw new Error('Countries unavailable'); return res.json(); })
       .then((data) => {
-        setCountriesRaw(data);
+        setCountriesRaw(Array.isArray(data) ? data : []);
       })
       .catch((err) => console.error('Error al consultar ladas de la API:', err));
   }, []);
@@ -240,12 +210,12 @@ function App() {
     if (!countriesRaw.length) return;
 
     const priorityCountries = new Map([
-      ['Mexico', 0],
-      ['México', 0],
-      ['United States', 1],
-      ['United States of America', 1],
-      ['Estados Unidos', 1],
-      ['Estados Unidos de América', 1],
+      ['Mexico', 1],
+      ['México', 1],
+      ['United States', 0],
+      ['United States of America', 0],
+      ['Estados Unidos', 0],
+      ['Estados Unidos de América', 0],
     ]);
 
     const formatted = countriesRaw
@@ -274,7 +244,7 @@ function App() {
         return a.name.localeCompare(b.name, lang);
       });
 
-    setCountryCodes(formatted);
+    if (formatted.length) setCountryCodes(formatted);
 
     setSelectedLada((prev) => {
       const match = formatted.find((c) => c.code === prev.code && c.flag === prev.flag);
@@ -286,9 +256,6 @@ function App() {
     setLang((l) => (l === 'en' ? 'es' : 'en'));
     setCarouselIdx(0);
     setShowVideo(false);
-    setSelectedCountry('');
-    setSelectedState('');
-    setSelectedHow('');
   };
 
   const triggerCarousel = (newIdx) => {
@@ -322,8 +289,17 @@ function App() {
     setShowVideo(false);
   };
 
+  const openGalleryImage = (item) => {
+    setActiveImage(galleryImages.indexOf(item));
+    galleryDialogRef.current?.showModal();
+  };
+
   const scrollToForm = () => {
-    document.getElementById('contact-form').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('lead-form')?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+      block: 'start',
+    });
+    document.getElementById('full-name')?.focus({ preventScroll: true });
   };
 
   const showFieldError = (field, message) => {
@@ -362,24 +338,6 @@ function App() {
       return false;
     }
 
-    if (!selectedCountry) {
-      setFormStatus('error');
-      setFormMessage(t.validation.countryRequired);
-      return false;
-    }
-
-    if (!selectedState) {
-      setFormStatus('error');
-      setFormMessage(t.validation.stateRequired);
-      return false;
-    }
-
-    if (!selectedHow) {
-      setFormStatus('error');
-      setFormMessage(t.validation.howRequired);
-      return false;
-    }
-
     if (!fields.consent.checked) {
       showFieldError(fields.consent, t.validation.consentRequired);
       return false;
@@ -409,9 +367,10 @@ function App() {
       phone,
       phoneCode: selectedLada.code,
       phoneCountry: selectedLada.name,
-      country: selectedCountry,
-      state: selectedState,
-      howHeard: selectedHow,
+      // Legacy API keys remain; location is no longer requested in the form.
+      country: '',
+      state: '',
+      howHeard: new URLSearchParams(window.location.search).get('utm_source') || 'Website',
       consent: formData.get('consent') === 'on',
       language: lang,
       page: window.location.href,
@@ -438,10 +397,7 @@ function App() {
       }
 
       form.reset();
-      setSelectedCountry('');
-      setSelectedState('');
-      setSelectedHow('');
-      setFormStatus('sent');
+            setFormStatus('sent');
       setFormMessage(t.sent);
     } catch (error) {
       console.error('Error sending lead:', error);
@@ -451,19 +407,6 @@ function App() {
       isSubmittingLeadRef.current = false;
     }
   };
-
-  useEffect(() => {
-    const form = document.getElementById('contact-form');
-    if (!form) return;
-
-    const io = new IntersectionObserver(
-      ([entry]) => setFormInView(entry.isIntersecting),
-      { threshold: 0.12 }
-    );
-
-    io.observe(form);
-    return () => io.disconnect();
-  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 600px)');
@@ -491,22 +434,11 @@ function App() {
   }, [showVideo]);
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (ladaRef.current && !ladaRef.current.contains(event.target)) setOpenLadaDrop(false);
-      if (countryRef.current && !countryRef.current.contains(event.target)) setOpenCountryDrop(false);
-      if (stateRef.current && !stateRef.current.contains(event.target)) setOpenStateDrop(false);
-      if (howRef.current && !howRef.current.contains(event.target)) setOpenHowDrop(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
     const els = document.querySelectorAll('.reveal');
     const io = new IntersectionObserver(
       (entries) => entries.forEach((e) => {
         if (e.isIntersecting) e.target.classList.add('in-view');
-        else e.target.classList.remove('in-view');
+        if (e.isIntersecting) io.unobserve(e.target);
       }),
       { threshold: 0.08, rootMargin: '0px 0px -30px 0px' }
     );
@@ -515,7 +447,7 @@ function App() {
   }, [lang]);
 
   useEffect(() => {
-    playMutedVideo(heroVideoRef.current);
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) playMutedVideo(heroVideoRef.current);
   }, []);
 
   useEffect(() => {
@@ -523,7 +455,7 @@ function App() {
 
     if (!video) return;
 
-    if (centerHovered && !showVideo) {
+    if (centerHovered && !showVideo && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       centerHoverDelayRef.current = setTimeout(() => {
         setCenterVideoActive(true);
         playMutedVideo(video);
@@ -545,7 +477,7 @@ function App() {
 
     if (!video) return;
 
-    if (rightHovered && !showVideo) {
+    if (rightHovered && !showVideo && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       rightHoverDelayRef.current = setTimeout(() => {
         setRightVideoActive(true);
         playMutedVideo(video);
@@ -565,12 +497,12 @@ function App() {
   return (
     <main className="page-shell">
 
-      <button className={`float-btn ${formInView ? 'is-hidden-on-form' : ''}`} onClick={scrollToForm}>
+      <button type="button" className="float-btn" onClick={scrollToForm} aria-controls="lead-form">
         <svg className="float-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
         </svg>
         <span className="float-label">
-          {lang === 'en' ? 'Want to contact us for more info?' : '¿Quieres contactarnos para más información?'}
+          {t.moreInfo}
         </span>
       </button>
 
@@ -578,13 +510,8 @@ function App() {
         <img src={t.logo} alt="Ciudad Maderas" className="logo-header" />
         <span className="header-title">{t.headerTitle}</span>
         <div className="header-right">
-          <button className="lang-toggle" onClick={toggleLang}>
-            <img
-              src={lang === 'en' ? 'https://flagcdn.com/w40/us.png' : 'https://flagcdn.com/w40/mx.png'}
-              alt={lang === 'en' ? 'US' : 'MX'}
-              className="lang-flag-img"
-            />
-            <span>{t.langLabel}</span>
+          <button type="button" className="lang-toggle" onClick={toggleLang} aria-label={lang === 'es' ? 'Switch to English' : 'Cambiar a español'}>
+            <span>{lang === 'es' ? 'EN' : 'ES'}</span>
           </button>
         </div>
       </header>
@@ -594,23 +521,27 @@ function App() {
           ref={heroVideoRef}
           className="hero-video-background"
           src={heroVideo}
-          autoPlay
           loop
           muted
-          defaultMuted
           playsInline
-          preload="auto"
-          poster="/CMCQROO_CD_CONJUNTO_HD -view playa de olas.jpg"
-          onCanPlay={() => playMutedVideo(heroVideoRef.current)}
+          preload="metadata"
+          poster="/gallery/cancun.webp"
+          onCanPlay={() => { if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) playMutedVideo(heroVideoRef.current); }}
         />
         <div className="hero-overlay-top" />
         <div className="hero-overlay-bottom" />
         <div className="hero-content">
+          <div className="hero-intro reveal">
+            <span className="eyebrow">CIUDAD MADERAS · MÉXICO</span>
+            <h1>{t.headerTitle}</h1>
+            <p className="hero-translation" lang={lang === 'es' ? 'en' : 'es'}>{content[lang === 'es' ? 'en' : 'es'].headerTitle}</p>
+          </div>
           <div className="hero-stats">
             <span className="trusted reveal" style={{ transitionDelay: '0.05s' }}>{t.trustedBy}</span>
             <span className="hero-number reveal" style={{ transitionDelay: '0.18s' }}>+100,000</span>
-            <span className="satisfied reveal" style={{ transitionDelay: '0.31s' }}>{t.satisfiedClients}</span>
+            <span className="satisfied reveal" style={{ transitionDelay: '0.31s' }}>{t.satisfiedClients}<small>{t.clientsPurchased}</small></span>
           </div>
+          <button type="button" className="primary-cta hero-cta reveal" onClick={scrollToForm}>{t.moreInfo}<span aria-hidden="true">↗</span></button>
           <div className="payments-bar reveal" style={{ transitionDelay: '0.44s' }}>
             <span className="payments-label">{t.paymentsLabel}</span>
             <div className="payments-logos">
@@ -626,33 +557,36 @@ function App() {
       {/* CARDS SECTION */}
       <section
         className="cards-section"
-        style={{ backgroundImage: "url('/FAMILY CLUB AMENITIES CANCÚN.jpg')" }}
+        style={{ backgroundImage: "url('/gallery/family-club.webp')" }}
       >
         <div className="cards-overlay" />
         <div className="cards-row">
 
           {/* CARD 1 - CARRUSEL */}
-          <div className={`card-carousel-wrapper ${showVideo ? 'expanded' : ''}`}>
+          <div className={`card-carousel-wrapper reveal ${showVideo ? 'expanded' : ''}`}>
             {!showVideo ? (
               <div className="card-carousel">
                 <div className="card-label-top">{t.residentLabel}</div>
                 <div className="card-label-big">{t.storiesLabel}</div>
-                <button className="carousel-btn left" onClick={(e) => { e.stopPropagation(); prev(); }}>&#8249;</button>
+                <button aria-label={lang === 'es' ? 'Testimonio anterior' : 'Previous story'} className="carousel-btn left" onClick={(e) => { e.stopPropagation(); prev(); }}>&#8249;</button>
                 <img
                   src={`/${t.carouselImages[carouselIdx]}`}
                   alt="Testimonio"
                   className={`carousel-img${carouselAnimating ? ' animating' : ''}`}
                 />
-                <div className="carousel-play-btn" onClick={openVideo}>
+                <button type="button" className="carousel-play-btn" onClick={openVideo} aria-label={lang === 'es' ? 'Ver testimonio' : 'Play resident story'}>
                   <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="24" cy="24" r="24" fill="rgba(0,0,0,0.45)"/>
                     <polygon points="19,14 38,24 19,34" fill="white"/>
                   </svg>
-                </div>
-                <button className="carousel-btn right" onClick={(e) => { e.stopPropagation(); next(); }}>&#8250;</button>
+                </button>
+                <button aria-label={lang === 'es' ? 'Siguiente testimonio' : 'Next story'} className="carousel-btn right" onClick={(e) => { e.stopPropagation(); next(); }}>&#8250;</button>
                 <div className="carousel-dots">
                   {t.carouselImages.map((_, i) => (
-                    <span
+                    <button
+                      type="button"
+                      aria-label={`${lang === 'es' ? 'Testimonio' : 'Story'} ${i + 1}`}
+                      aria-pressed={i === carouselIdx}
                       key={i}
                       className={`dot${i === carouselIdx ? ' active' : ''}`}
                       onClick={() => triggerCarousel(i)}
@@ -670,7 +604,7 @@ function App() {
                   playsInline
                   className="carousel-video-player"
                 />
-                <button className="carousel-video-close" onClick={closeVideo}>✕</button>
+                <button aria-label={lang === 'es' ? 'Cerrar video' : 'Close video'} className="carousel-video-close" onClick={closeVideo}>✕</button>
                 <div className="carousel-video-brand">
                   <span>Ciudad Maderas</span>
                   <span className="carousel-video-brand-sub">TERRENOS PREMIUM</span>
@@ -683,11 +617,11 @@ function App() {
           {/* CARD 2 - MAPA */}
           <div
             ref={centerCardRef}
-            className={`card-miniature card-center ${showVideo ? 'faded' : ''}`}
+            className={`card-miniature card-center reveal ${showVideo ? 'faded' : ''}`}
             onMouseEnter={() => !showVideo && setCenterHovered(true)}
             onMouseLeave={() => setCenterHovered(false)}
           >
-            <img src="/mapa portada.png" alt="Mapa" />
+            <img src="/gallery/mapa.webp" alt="Mapa" />
             <div className="card-center-text">
               <span className="card-center-top">{t.anOptionFor}</span>
               <span className="card-center-big">{t.everyone}</span>
@@ -701,10 +635,9 @@ function App() {
                 src={mapVideo}
                 loop
                 muted
-                defaultMuted
                 playsInline
-                preload="auto"
-                poster="/mapa portada.png"
+                preload="metadata"
+                poster="/gallery/mapa.webp"
               />
             </div>
           </div>
@@ -712,11 +645,11 @@ function App() {
           {/* CARD 3 - LIVE RESORT STYLE */}
           <div
             ref={rightCardRef}
-            className={`card-miniature card-right ${showVideo ? 'faded' : ''}`}
+            className={`card-miniature card-right reveal ${showVideo ? 'faded' : ''}`}
             onMouseEnter={() => !showVideo && setRightHovered(true)}
             onMouseLeave={() => setRightHovered(false)}
           >
-            <img src="/portada amenidades.png" alt="Amenidades" />
+            <img src="/gallery/amenidades.webp" alt="Amenidades" />
             <div className="card-right-text">
               <span className="card-right-top">{t.builtYour}</span>
               <span className="card-right-big">{t.home}</span>
@@ -730,25 +663,69 @@ function App() {
                 src={resortVideo}
                 loop
                 muted
-                defaultMuted
                 playsInline
-                preload="auto"
-                poster="/portada amenidades.png"
+                preload="metadata"
+                poster="/gallery/amenidades.webp"
               />
             </div>
           </div>
         </div>
       </section>
 
+      <section className="gallery-section" aria-labelledby="gallery-title">
+        <div className="gallery-heading reveal">
+          <h2 id="gallery-title">{t.galleryTitle}</h2>
+          <p>{t.gallerySubtitle}</p>
+        </div>
+        <div className="gallery-grid" aria-label={t.galleryTitle}>
+          {galleryImages.map((item, index) => (
+            <button type="button" key={item.src} className="gallery-tile reveal"
+              style={{ transitionDelay: `${index * 50}ms` }}
+              aria-label={`${t.galleryView}: ${item[lang]}`}
+              onClick={() => openGalleryImage(item)}>
+              <span className="gallery-image-frame">
+                <img src={item.src} alt={item[lang]} width={item.width} height={item.height} loading="lazy" decoding="async" />
+              </span>
+              <span className="gallery-tile-caption"><strong>{item[lang]}</strong><span aria-hidden="true">↗</span></span>
+            </button>
+          ))}
+        </div>
+        <div className="gallery-bottom">
+          <small>{t.pricingNote}</small>
+          <button type="button" className="primary-cta gallery-cta" onClick={scrollToForm}>{t.moreInfo}<span aria-hidden="true">↗</span></button>
+        </div>
+      </section>
+
+      <dialog ref={galleryDialogRef} className="gallery-dialog" aria-label={t.galleryTitle}
+        onClick={(event) => { if (event.target === event.currentTarget) galleryDialogRef.current?.close(); }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowRight') setActiveImage((i) => (i + 1) % filteredGallery.length);
+          if (event.key === 'ArrowLeft') setActiveImage((i) => (i - 1 + filteredGallery.length) % filteredGallery.length);
+        }}>
+        <div className="gallery-dialog-inner">
+          <div className="gallery-dialog-top"><span>CIUDAD MADERAS / {lang === 'es' ? 'LA COLECCIÓN' : 'THE COLLECTION'}</span><span>{(activeImage + 1).toString().padStart(2, '0')} / {filteredGallery.length.toString().padStart(2, '0')}</span></div>
+          <button type="button" className="gallery-close" aria-label={t.galleryClose} onClick={() => galleryDialogRef.current?.close()}>✕</button>
+          <figure>
+            <img key={filteredGallery[activeImage].src} src={filteredGallery[activeImage].src} alt={filteredGallery[activeImage][lang]} />
+            <figcaption aria-live="polite"><strong>{filteredGallery[activeImage][lang]}</strong><span>{filteredGallery[activeImage].description[lang]}</span><small>{filteredGallery[activeImage].render ? t.renderLabel : (lang === 'es' ? 'Fotografía del destino' : 'Destination photography')}</small></figcaption>
+          </figure>
+          <button type="button" className="gallery-nav gallery-prev" aria-label={t.galleryPrevious} onClick={() => setActiveImage((i) => (i - 1 + filteredGallery.length) % filteredGallery.length)}>‹</button>
+          <button type="button" className="gallery-nav gallery-next" aria-label={t.galleryNext} onClick={() => setActiveImage((i) => (i + 1) % filteredGallery.length)}>›</button>
+          <div className="gallery-thumbnails" role="group" aria-label={lang === 'es' ? 'Seleccionar imagen' : 'Choose image'}>
+            {filteredGallery.map((item, index) => <button type="button" key={item.src} aria-label={`${t.galleryView}: ${item[lang]}`} aria-pressed={index === activeImage} onClick={() => setActiveImage(index)}><img src={item.src} alt="" /></button>)}
+          </div>
+        </div>
+      </dialog>
+
       {/* FORM SECTION */}
       <section
         id="contact-form"
         className="form-section"
-        style={{ backgroundImage: "url('/CMCQROO_CD_CONJUNTO_HD -view playa de olas.jpg')" }}
+        style={{ backgroundImage: "url('/gallery/cancun.webp')" }}
       >
         <div className="form-overlay" />
         <div className="form-inner">
-          <form className="form-form reveal" style={{ transitionDelay: '0s' }} onSubmit={submitLead} noValidate>
+          <form id="lead-form" className="form-form reveal" style={{ transitionDelay: '0s' }} onSubmit={submitLead} noValidate>
             <div className="form-titles">
               <span className="form-title1">{t.formTitle1}</span>
               <span className="form-title2">
@@ -760,129 +737,33 @@ function App() {
             </div>
             
             <div className="form-inputs">
-              <label>{t.fullName}<input name="fullName" type="text" placeholder={t.fullName} /></label>
-              <label>{t.email}<input name="email" type="text" inputMode="email" autoComplete="email" placeholder={t.email} /></label>
+              <label>{t.fullName}<input id="full-name" name="fullName" autoComplete="name" required type="text" placeholder={t.fullName} /></label>
+              <label>{t.email}<input name="email" required type="email" inputMode="email" autoComplete="email" placeholder={t.email} /></label>
               
-              <label>{t.phone}
+              <div className="form-field">
+                <label htmlFor="phone-number">{t.phone}</label>
                 <div className="phone-input-container">
-                  <div className="lux-dropdown" ref={ladaRef}>
-                    <div className="lux-trigger" onClick={() => setOpenLadaDrop(!openLadaDrop)}>
-                      <span className="lux-flag">{selectedLada.flag}</span>
-                      <span className="lux-code-text">{selectedLada.code}</span>
-                      <span className="lux-arrow"></span>
-                    </div>
-                    {openLadaDrop && (
-                      <ul className="lux-menu scrollable">
-                        {countryCodes.map((country, idx) => (
-                          <li 
-                            key={idx} 
-                            className={`lux-item ${selectedLada.code === country.code && selectedLada.name === country.name ? 'selected' : ''}`}
-                            onClick={() => {
-                              setSelectedLada(country);
-                              setOpenLadaDrop(false);
-                            }}
-                          >
-                            <span className="lux-flag">{country.flag}</span>
-                            <span className="lux-code-text">{country.code}</span>
-                            <span className="lux-item-text"> - {country.name}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <input name="phone" type="tel" placeholder="(201) 555-0123" />
+                  <select className="phone-code-select" aria-label={lang === 'es' ? 'Código de país del teléfono' : 'Phone country code'}
+                    value={`${selectedLada.code}|${selectedLada.flag}`}
+                    onChange={(event) => {
+                      const country = countryCodes.find((item) => `${item.code}|${item.flag}` === event.target.value);
+                      if (country) setSelectedLada(country);
+                    }}>
+                    {countryCodes.map((country) => <option key={`${country.code}|${country.flag}|${country.name}`} value={`${country.code}|${country.flag}`}>{country.code} · {country.name}</option>)}
+                  </select>
+                  <input id="phone-number" name="phone" required autoComplete="tel-national" inputMode="tel" type="tel" placeholder="(201) 555-0123" />
                 </div>
-              </label>
-
-              <div className="form-row">
-                <label>{t.country}
-                  <div className="lux-dropdown" ref={countryRef}>
-                    <div className="lux-trigger" onClick={() => setOpenCountryDrop(!openCountryDrop)}>
-                      <span>{selectedCountry || t.selectCountry}</span>
-                      <span className="lux-arrow"></span>
-                    </div>
-                    {openCountryDrop && (
-                      <ul className="lux-menu">
-                        {t.countries.map((c) => (
-                          <li 
-                            key={c} 
-                            className={`lux-item ${selectedCountry === c ? 'selected' : ''}`}
-                            onClick={() => {
-                              setSelectedCountry(c);
-                              setOpenCountryDrop(false);
-                            }}
-                          >
-                            {c}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </label>
-
-                <label>{t.state}
-                  <div className="lux-dropdown" ref={stateRef}>
-                    <div className="lux-trigger" onClick={() => {
-                      if (availableStates.length > 0) {
-                        setOpenStateDrop(!openStateDrop);
-                      }
-                    }} style={{ opacity: availableStates.length === 0 ? 0.6 : 1, cursor: availableStates.length === 0 ? 'not-allowed' : 'pointer' }}>
-                      <span>{selectedState || t.selectState}</span>
-                      <span className="lux-arrow"></span>
-                    </div>
-                    {openStateDrop && availableStates.length > 0 && (
-                      <ul className="lux-menu scrollable">
-                        {availableStates.map((s) => (
-                          <li 
-                            key={s} 
-                            className={`lux-item ${selectedState === s ? 'selected' : ''}`}
-                            onClick={() => {
-                              setSelectedState(s);
-                              setOpenStateDrop(false);
-                            }}
-                          >
-                            {s}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </label>
               </div>
 
-              <label>{t.howHeard}
-                <div className="lux-dropdown" ref={howRef}>
-                  <div className="lux-trigger" onClick={() => setOpenHowDrop(!openHowDrop)}>
-                    <span>{selectedHow || t.selectHow}</span>
-                    <span className="lux-arrow"></span>
-                  </div>
-                  {openHowDrop && (
-                    <ul className="lux-menu">
-                      {t.howOptions.map((opt) => (
-                        <li 
-                          key={opt} 
-                          className={`lux-item ${selectedHow === opt ? 'selected' : ''}`}
-                          onClick={() => {
-                            setSelectedHow(opt);
-                            setOpenHowDrop(false);
-                          }}
-                        >
-                          {opt}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </label>
             </div>
 
             <div className="form-actions">
               <label className="checkbox-label">
-                <input name="consent" type="checkbox" />
+                <input name="consent" required type="checkbox" />
                 <span>{t.consent}</span>
               </label>
               {formMessage && (
-                <span className={`form-message ${formStatus}`}>{formMessage}</span>
+                <span role="status" aria-live="polite" className={`form-message ${formStatus}`}>{formMessage}</span>
               )}
               <button type="submit" disabled={formStatus === 'sending'}>
                 {formStatus === 'sending' ? t.sending : t.send}
@@ -894,13 +775,14 @@ function App() {
             <div className="price-container">
               <span className="from-label">{t.from}</span>
               <span className="price-dollar">$</span>
-              <span className="price-main">89</span>
+              <span className="price-main">149</span>
               <div className="price-right">
                 <span className="usd-label">USD *</span>
                 <span className="monthly-label">{t.monthlyPayment}</span>
               </div>
             </div>
             <span className="no-credit">{t.noCredit}</span>
+            <p className="pricing-note">{t.pricingNote}</p>
           </div>
         </div>
       </section>
