@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import './App.css';
 
 const videoApiBase = import.meta.env.VITE_VIDEO_API_BASE_URL || '';
@@ -17,9 +17,200 @@ const mapVideo    = privateVideo('DESARROLLOS ENG.mp4');
 const resortVideo = privateVideo('tomas desarrollos eng.mp4');    
 
 const defaultPhoneCodes = [
-  { code: '+1', flag: '🇺🇸', name: 'United States' },
-  { code: '+52', flag: '🇲🇽', name: 'México' },
+  { code: '+1', flag: '🇺🇸', iso: 'US', name: 'United States' },
+  { code: '+52', flag: '🇲🇽', iso: 'MX', name: 'México' },
 ];
+
+// The API only sends emoji flags, so the ISO code is recovered from the regional-indicator letters.
+const flagToIso = (flag) => {
+  const points = [...(flag || '')].map((char) => char.codePointAt(0));
+  if (points.length !== 2 || points.some((point) => point < 0x1f1e6 || point > 0x1f1ff)) return '';
+  return points.map((point) => String.fromCharCode(point - 0x1f1e6 + 65)).join('');
+};
+
+// libphonenumber-js carries per-country length rules (~150 KB), so it loads after first paint.
+let phoneLibPromise = null;
+const loadPhoneLib = () => {
+  if (!phoneLibPromise) {
+    phoneLibPromise = Promise.all([
+      import('libphonenumber-js/max'),
+      import('libphonenumber-js/mobile/examples'),
+    ])
+      .then(([lib, examples]) => ({
+        validatePhoneNumberLength: lib.validatePhoneNumberLength,
+        getExampleNumber: lib.getExampleNumber,
+        examples: examples.default,
+      }))
+      .catch((error) => {
+        phoneLibPromise = null;
+        throw error;
+      });
+  }
+  return phoneLibPromise;
+};
+
+const fallbackPhoneRules = { min: 6, max: 15, example: '' };
+
+// Shortest and longest national number the country allows, found by probing the library.
+const getPhoneRules = (phoneLib, iso) => {
+  if (!phoneLib || !iso) return fallbackPhoneRules;
+
+  try {
+    let min = 0;
+    let max = 0;
+
+    for (let length = 1; length <= 17; length += 1) {
+      const result = phoneLib.validatePhoneNumberLength('2'.repeat(length), iso);
+
+      if (result === 'INVALID_COUNTRY' || result === 'NOT_A_NUMBER') return fallbackPhoneRules;
+      if (result === 'TOO_LONG') break;
+
+      max = length;
+      if (!min && result !== 'TOO_SHORT') min = length;
+    }
+
+    if (!min || !max) return fallbackPhoneRules;
+
+    const example = phoneLib.getExampleNumber(iso, phoneLib.examples);
+    return { min, max, example: example?.nationalNumber || '' };
+  } catch {
+    return fallbackPhoneRules;
+  }
+};
+
+// Dial codes whose countries do not use a leading 0 trunk prefix (NANP and Mexico).
+const noTrunkPrefixCodes = ['+1', '+52'];
+
+const capPhoneDigits = (digits, rules, dialCode) => {
+  const allowTrunkPrefix = digits.startsWith('0') && !noTrunkPrefixCodes.includes(dialCode);
+  return digits.slice(0, rules.max + (allowTrunkPrefix ? 1 : 0));
+};
+
+// Digits only; a pasted "+52 33..." drops the dial code that the selector already shows.
+const sanitizePhone = (raw, dialCode) => {
+  let digits = raw.replace(/\D/g, '');
+  if (raw.trim().startsWith('+') && digits.startsWith(dialCode.slice(1))) {
+    digits = digits.slice(dialCode.length - 1);
+  }
+  return digits;
+};
+
+const isPhoneLengthValid = (phoneLib, iso, digits, rules) => {
+  if (!phoneLib || !iso) return digits.length >= rules.min && digits.length <= rules.max;
+
+  try {
+    return phoneLib.validatePhoneNumberLength(digits, iso) === undefined;
+  } catch {
+    return false;
+  }
+};
+
+function PhoneFlag({ iso, flag }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!iso || failed) return <span className="lux-flag" aria-hidden="true">{flag}</span>;
+
+  const code = iso.toLowerCase();
+
+  return (
+    <img
+      className="phone-flag-img"
+      src={`https://flagcdn.com/w40/${code}.png`}
+      srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
+      width="24"
+      height="18"
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function PhoneCodePicker({ options, value, onChange, label, searchLabel, emptyLabel }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const closeOnOutside = (event) => {
+      if (rootRef.current && !rootRef.current.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', closeOnOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
+
+  const search = query.trim().toLowerCase();
+  const visible = search
+    ? options.filter((option) => (
+      option.name.toLowerCase().includes(search)
+      || option.code.includes(search)
+      || option.iso.toLowerCase() === search
+    ))
+    : options;
+
+  return (
+    <div className="lux-dropdown phone-code" ref={rootRef}>
+      <button
+        type="button"
+        className="lux-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`${label}: ${value.name} ${value.code}`}
+        onClick={() => { setQuery(''); setOpen((current) => !current); }}
+      >
+        <PhoneFlag key={value.iso || value.flag} iso={value.iso} flag={value.flag} />
+        <span className="lux-code-text">{value.code}</span>
+        <span className="lux-arrow" />
+      </button>
+      {open && (
+        <div className="phone-menu">
+          <input
+            type="search"
+            className="phone-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={searchLabel}
+            aria-label={searchLabel}
+            autoComplete="off"
+            // On phones the keyboard would cover the list, so only focus the search on desktop.
+            autoFocus={window.matchMedia('(pointer: fine)').matches}
+          />
+          <ul className="phone-options" role="listbox" aria-label={label}>
+            {visible.map((option) => {
+              const selected = option.code === value.code && option.flag === value.flag;
+
+              return (
+                <li key={`${option.iso}|${option.code}|${option.name}`} role="option" aria-selected={selected}>
+                  <button
+                    type="button"
+                    className={`lux-item ${selected ? 'selected' : ''}`}
+                    onClick={() => { onChange(option); setOpen(false); }}
+                  >
+                    <PhoneFlag key={option.iso || option.flag} iso={option.iso} flag={option.flag} />
+                    <span className="lux-code-text">{option.code}</span>
+                    <span className="lux-item-text">{option.name}</span>
+                  </button>
+                </li>
+              );
+            })}
+            {!visible.length && <li className="phone-empty">{emptyLabel}</li>}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 const galleryImages = [
   {"src": "/gallery/family-club.webp", "type": "developments", "es": "Family Club · Cancún", "en": "Family Club · Cancún", "description": {"es": "La vida que imaginabas, en el Caribe mexicano.", "en": "The lifestyle you imagined, in the Mexican Caribbean."}, "width": 1600, "height": 900, "render": true, "featured": true},
   {"src": "/gallery/antara.webp", "type": "homes", "es": "Casa modelo Antara", "en": "Antara home model", "description": {"es": "Arquitectura para una nueva etapa.", "en": "Architecture for a new chapter."}, "width": 1600, "height": 1600, "render": true, "featured": false},
@@ -73,6 +264,10 @@ const content = {
     fullName: 'Full name',
     email: 'Email',
     phone: 'Phone number',
+    phoneCodeLabel: 'Phone country code',
+    phoneSearch: 'Search country or code',
+    phoneNoResults: 'No countries found',
+    phoneDigits: 'digits',
     consent: 'I agree to be contacted through any of the provided means to receive information.',
     send: 'SEND',
     sending: 'SENDING...',
@@ -84,6 +279,8 @@ const content = {
       emailRequired: 'Please enter your email.',
       emailInvalid: 'Please enter a valid email address.',
       phoneRequired: 'Please enter your phone number.',
+      phoneInvalidExact: 'Enter a phone number with exactly {n} digits.',
+      phoneInvalidRange: 'Enter a phone number with {min} to {max} digits.',
       consentRequired: 'Please accept the contact authorization.',
     },
     from: 'FROM',
@@ -132,6 +329,10 @@ const content = {
     fullName: 'Nombre completo',
     email: 'Correo electrónico',
     phone: 'Número de teléfono',
+    phoneCodeLabel: 'Código de país del teléfono',
+    phoneSearch: 'Buscar país o código',
+    phoneNoResults: 'No se encontraron países',
+    phoneDigits: 'dígitos',
     consent: 'Acepto ser contactado a través de cualquiera de los medios proporcionados para recibir información.',
     send: 'ENVIAR',
     sending: 'ENVIANDO...',
@@ -143,6 +344,8 @@ const content = {
       emailRequired: 'Ingresa tu correo electrónico.',
       emailInvalid: 'Ingresa un correo electrónico válido.',
       phoneRequired: 'Ingresa tu número de teléfono.',
+      phoneInvalidExact: 'Ingresa un teléfono de exactamente {n} dígitos.',
+      phoneInvalidRange: 'Ingresa un teléfono de {min} a {max} dígitos.',
       consentRequired: 'Acepta la autorización de contacto.',
     },
     from: 'DESDE',
@@ -182,8 +385,10 @@ function App() {
   // LADAS DESDE LA API
   const [countriesRaw, setCountriesRaw] = useState([]);
   const [countryCodes, setCountryCodes] = useState(defaultPhoneCodes);
-  const [selectedLada, setSelectedLada] = useState({ code: '+1', flag: '🇺🇸', name: 'United States' });
-
+  const [selectedLada, setSelectedLada] = useState(defaultPhoneCodes[0]);
+  const [phoneValue, setPhoneValue] = useState('');
+  const [phoneLib, setPhoneLib] = useState(null);
+  const phoneRules = useMemo(() => getPhoneRules(phoneLib, selectedLada.iso), [phoneLib, selectedLada.iso]);
 
   const [formStatus, setFormStatus] = useState('idle');
   const [formMessage, setFormMessage] = useState('');
@@ -197,6 +402,12 @@ function App() {
   }, [lang]);
 
  
+  useEffect(() => {
+    loadPhoneLib()
+      .then(setPhoneLib)
+      .catch((err) => console.error('No se pudieron cargar las reglas de teléfono:', err));
+  }, []);
+
   useEffect(() => {
     fetch('/api/countries')
       .then((res) => { if (!res.ok) throw new Error('Countries unavailable'); return res.json(); })
@@ -232,6 +443,7 @@ function App() {
         return {
           code: fullCode,
           flag: country.flag || '🏳️',
+          iso: flagToIso(country.flag),
           name: localizedName
         };
       })
@@ -251,6 +463,17 @@ function App() {
       return match || prev;
     });
   }, [countriesRaw, lang]);
+
+  const handlePhoneChange = (event) => {
+    const digits = sanitizePhone(event.target.value, selectedLada.code);
+    setPhoneValue(capPhoneDigits(digits, phoneRules, selectedLada.code));
+  };
+
+  // Switching country trims digits that the new country's number format would not allow.
+  const handleLadaChange = (country) => {
+    setSelectedLada(country);
+    setPhoneValue((current) => capPhoneDigits(current, getPhoneRules(phoneLib, country.iso), country.code));
+  };
 
   const toggleLang = () => {
     setLang((l) => (l === 'en' ? 'es' : 'en'));
@@ -308,7 +531,11 @@ function App() {
     field.addEventListener('input', () => field.setCustomValidity(''), { once: true });
   };
 
-  const validateLeadForm = (form) => {
+  const phoneLengthMessage = (rules) => (rules.min === rules.max
+    ? t.validation.phoneInvalidExact.replace('{n}', rules.max)
+    : t.validation.phoneInvalidRange.replace('{min}', rules.min).replace('{max}', rules.max));
+
+  const validateLeadForm = (form, lib) => {
     const fields = form.elements;
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -338,6 +565,13 @@ function App() {
       return false;
     }
 
+    const rules = getPhoneRules(lib, selectedLada.iso);
+
+    if (!isPhoneLengthValid(lib, selectedLada.iso, phoneValue, rules)) {
+      showFieldError(fields.phone, phoneLengthMessage(rules));
+      return false;
+    }
+
     if (!fields.consent.checked) {
       showFieldError(fields.consent, t.validation.consentRequired);
       return false;
@@ -355,16 +589,22 @@ function App() {
 
     const form = event.currentTarget;
 
-    if (!validateLeadForm(form)) {
+    // Already loaded in practice; if it failed to load, validation falls back to generic length limits.
+    const lib = await loadPhoneLib().catch(() => null);
+
+    if (isSubmittingLeadRef.current) {
+      return;
+    }
+
+    if (!validateLeadForm(form, lib)) {
       return;
     }
 
     const formData = new FormData(form);
-    const phone = String(formData.get('phone') || '').trim();
     const payload = {
       fullName: formData.get('fullName'),
       email: formData.get('email'),
-      phone,
+      phone: phoneValue,
       phoneCode: selectedLada.code,
       phoneCountry: selectedLada.name,
       // Legacy API keys remain; location is no longer requested in the form.
@@ -397,10 +637,20 @@ function App() {
       }
 
       form.reset();
-            setFormStatus('sent');
+      setPhoneValue('');
+      setFormStatus('sent');
       setFormMessage(t.sent);
+      // Conversion event for GTM. No personal data is sent to the dataLayer.
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: 'lead_success', lead_source: payload.howHeard, form_language: lang });
     } catch (error) {
       console.error('Error sending lead:', error);
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: 'lead_error',
+        error_type: error.code === 'LEAD_DUPLICATE' ? 'duplicate' : 'server',
+        form_language: lang,
+      });
       setFormStatus('error');
       setFormMessage(error.code === 'LEAD_DUPLICATE' ? t.duplicateLead : t.sendError);
     } finally {
@@ -743,16 +993,34 @@ function App() {
               <div className="form-field">
                 <label htmlFor="phone-number">{t.phone}</label>
                 <div className="phone-input-container">
-                  <select className="phone-code-select" aria-label={lang === 'es' ? 'Código de país del teléfono' : 'Phone country code'}
-                    value={`${selectedLada.code}|${selectedLada.flag}`}
-                    onChange={(event) => {
-                      const country = countryCodes.find((item) => `${item.code}|${item.flag}` === event.target.value);
-                      if (country) setSelectedLada(country);
-                    }}>
-                    {countryCodes.map((country) => <option key={`${country.code}|${country.flag}|${country.name}`} value={`${country.code}|${country.flag}`}>{country.code} · {country.name}</option>)}
-                  </select>
-                  <input id="phone-number" name="phone" required autoComplete="tel-national" inputMode="tel" type="tel" placeholder="(201) 555-0123" />
+                  <PhoneCodePicker
+                    options={countryCodes}
+                    value={selectedLada}
+                    onChange={handleLadaChange}
+                    label={t.phoneCodeLabel}
+                    searchLabel={t.phoneSearch}
+                    emptyLabel={t.phoneNoResults}
+                  />
+                  <input
+                    id="phone-number"
+                    name="phone"
+                    required
+                    autoComplete="tel-national"
+                    inputMode="numeric"
+                    type="tel"
+                    value={phoneValue}
+                    onChange={handlePhoneChange}
+                    placeholder={phoneRules.example}
+                    aria-describedby="phone-hint"
+                  />
                 </div>
+                {phoneLib && (
+                  <small id="phone-hint" className="phone-hint" aria-live="polite">
+                    {phoneRules.min === phoneRules.max
+                      ? `${phoneValue.length}/${phoneRules.max} ${t.phoneDigits}`
+                      : `${phoneRules.min}–${phoneRules.max} ${t.phoneDigits}`}
+                  </small>
+                )}
               </div>
 
             </div>
