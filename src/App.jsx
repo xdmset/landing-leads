@@ -459,26 +459,139 @@ function useGalleryItems(fallback) {
   }), [remote, fallback]);
 }
 
-// Big tiles (feature/wide/tall/full) get a larger image than the single-cell ones.
-const tileSizes = (layout) => (layout
-  ? '(max-width: 700px) 100vw, 50vw'
-  : '(max-width: 700px) 100vw, (max-width: 1000px) 50vw, 25vw');
+// Image width hint for the browser, matching the tile widths in the CSS.
+const tileSizes = (category) => (category === 'amenities'
+  ? '(max-width: 700px) 80vw, 500px'
+  : '(max-width: 700px) 78vw, 360px');
 
-// Bento layout: the first image is large, the rest fill the grid without gaps for 1–5 images.
-const tileLayout = (index, total) => {
-  if (index === 0) return total === 1 ? 'tile--full' : 'tile--feature';
-  if (total === 2) return 'tile--tall';
-  if (total === 3) return 'tile--wide';
-  if (total === 4) return index === 3 ? 'tile--wide' : '';
-  if (index < 5) return '';
-  const leftover = (total - 5) % 4;
-  const isLastRow = index >= total - leftover;
-  if (!isLastRow) return '';
-  if (leftover === 1) return 'tile--full';
-  if (leftover === 2) return 'tile--wide';
-  if (leftover === 3 && index === total - 1) return 'tile--wide';
-  return '';
+const CAROUSEL_INTERVAL = 4000;
+const CAROUSEL_IDLE_AFTER_USER = 8000;
+
+// Moves the track one card; at either end it wraps around to the other.
+const scrollTrack = (track, direction) => {
+  if (!track) return;
+
+  const card = track.querySelector('.tile');
+  const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+  const distance = (card ? card.offsetWidth : track.clientWidth * 0.8) + gap;
+  const max = track.scrollWidth - track.clientWidth;
+  const behavior = prefersReducedMotion() ? 'auto' : 'smooth';
+
+  if (direction > 0 && track.scrollLeft >= max - 4) track.scrollTo({ left: 0, behavior });
+  else if (direction < 0 && track.scrollLeft <= 4) track.scrollTo({ left: max, behavior });
+  else track.scrollBy({ left: direction * distance, behavior });
 };
+
+// One row of photos. It scrolls on its own, pauses while someone is using it, and can always be moved by
+// hand: arrow buttons, trackpad / mouse wheel, or swiping on a phone (native scroll with snapping).
+function GalleryCarousel({ items, lang, category, panelId, labelledBy, labels, onOpen }) {
+  const rootRef = useRef(null);
+  const trackRef = useRef(null);
+  const pausedRef = useRef(false);
+  const lastUserActionRef = useRef(0);
+  const [inView, setInView] = useState(false);
+  const [canScroll, setCanScroll] = useState(true);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return undefined;
+
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { threshold: 0.25 });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return undefined;
+
+    const observer = new ResizeObserver(() => setCanScroll(track.scrollWidth > track.clientWidth + 4));
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!inView || !canScroll || prefersReducedMotion()) return undefined;
+
+    const timer = setInterval(() => {
+      const idle = Date.now() - lastUserActionRef.current >= CAROUSEL_IDLE_AFTER_USER;
+      if (pausedRef.current || !idle || document.hidden || document.querySelector('dialog[open]')) return;
+      scrollTrack(trackRef.current, 1);
+    }, CAROUSEL_INTERVAL);
+
+    return () => clearInterval(timer);
+  }, [inView, canScroll]);
+
+  const markUserAction = () => { lastUserActionRef.current = Date.now(); };
+  const move = (direction) => { markUserAction(); scrollTrack(trackRef.current, direction); };
+
+  return (
+    <div
+      ref={rootRef}
+      id={panelId}
+      className="gallery-carousel"
+      data-category={category}
+      role="tabpanel"
+      aria-labelledby={labelledBy}
+      onPointerEnter={(event) => { if (event.pointerType === 'mouse') pausedRef.current = true; }}
+      onPointerLeave={() => { pausedRef.current = false; }}
+      onFocus={() => { pausedRef.current = true; }}
+      onBlur={() => { pausedRef.current = false; }}
+      onPointerDown={markUserAction}
+      onWheel={markUserAction}
+      onTouchStart={markUserAction}
+      onKeyDown={markUserAction}
+    >
+      {canScroll && (
+        <button type="button" className="carousel-btn carousel-btn--prev" aria-label={labels.previous} onClick={() => move(-1)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+      )}
+
+      <div ref={trackRef} className="gallery-track">
+        {items.map((item, index) => (
+          <button
+            type="button"
+            key={item.src}
+            className="tile"
+            style={{ animationDelay: `${Math.min(index, 6) * 80}ms` }}
+            aria-label={`${labels.view}: ${item[lang]}`}
+            onClick={() => onOpen(index)}
+          >
+            <picture>
+              {item.cardSet && <source type="image/avif" srcSet={item.cardSet.avif} sizes={tileSizes(category)} />}
+              <img
+                src={item.src}
+                srcSet={item.cardSet?.webp}
+                sizes={item.cardSet ? tileSizes(category) : undefined}
+                alt=""
+                width={item.width}
+                height={item.height}
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
+            <span className="tile-caption">
+              <span>
+                <strong>{item[lang]}</strong>
+                <small>{item.description[lang]}</small>
+              </span>
+              <span className="tile-zoom" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7 17L17 7M9 7h8v8" /></svg>
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {canScroll && (
+        <button type="button" className="carousel-btn carousel-btn--next" aria-label={labels.next} onClick={() => move(1)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+        </button>
+      )}
+    </div>
+  );
+}
 
 /* ---------- Copy ---------- */
 
@@ -1233,51 +1346,16 @@ function App() {
             </div>
           </div>
 
-          <div
-            id="gallery-panel"
-            className="gallery-grid"
-            role="tabpanel"
-            aria-labelledby={galleryTab === 'homes' ? 'tab-homes' : 'tab-amenities'}
+          <GalleryCarousel
             key={galleryTab}
-          >
-            {filteredGallery.map((item, index) => {
-              const layout = tileLayout(index, filteredGallery.length);
-
-              return (
-                <button
-                  type="button"
-                  key={item.src}
-                  className={`tile ${layout}`}
-                  style={{ animationDelay: `${Math.min(index, 6) * 80}ms` }}
-                  aria-label={`${t.galleryView}: ${item[lang]}`}
-                  onClick={() => openGalleryImage(index)}
-                >
-                  <picture>
-                    {item.cardSet && <source type="image/avif" srcSet={item.cardSet.avif} sizes={tileSizes(layout)} />}
-                    <img
-                      src={item.src}
-                      srcSet={item.cardSet?.webp}
-                      sizes={item.cardSet ? tileSizes(layout) : undefined}
-                      alt=""
-                      width={item.width}
-                      height={item.height}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </picture>
-                  <span className="tile-caption">
-                    <span>
-                      <strong>{item[lang]}</strong>
-                      <small>{item.description[lang]}</small>
-                    </span>
-                    <span className="tile-zoom" aria-hidden="true">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7 17L17 7M9 7h8v8" /></svg>
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+            items={filteredGallery}
+            lang={lang}
+            category={galleryTab}
+            panelId="gallery-panel"
+            labelledBy={galleryTab === 'homes' ? 'tab-homes' : 'tab-amenities'}
+            labels={{ view: t.galleryView, previous: t.galleryPrevious, next: t.galleryNext }}
+            onOpen={openGalleryImage}
+          />
 
           <div className="gallery-foot reveal">
             <small>{t.pricingNote}</small>
