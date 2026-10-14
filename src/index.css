@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Montserrat:wght@400;500;600;700;800&display=swap');
+
 :root {
-  font-family: 'Montserrat', Arial, sans-serif;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -16,6 +18,8 @@ html, body, #root {
   padding: 0;
 }
 
+html { scroll-behavior: smooth; }
+
 body {
   margin: 0;
   background: #002E42;
@@ -26,3 +30,7 @@ body {
 }
 
 h1, h2, h3, p { margin-top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

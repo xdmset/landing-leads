@@ -36,6 +36,7 @@ const FILE_PREFIX = process.env.BACKBLAZE_FILE_PREFIX?.trim().replace(/^\/+|\/+$
 const MONGO_URI = process.env.MONGO_URI;
 const DB_NAME = process.env.DB_NAME || 'Studio';
 const LEADS_COLLECTION = process.env.LEADS_COLLECTION || 'landing_clients';
+const CONTENT_COLLECTION = process.env.CONTENT_COLLECTION || 'Contenido';
 
 const allowedVideos = new Set([
   'Carlos Subt.mp4',
@@ -79,7 +80,11 @@ const getMongoDb = async () => {
 
   if (!mongoClientPromise) {
     const client = new MongoClient(MONGO_URI);
-    mongoClientPromise = client.connect();
+    mongoClientPromise = client.connect().catch((error) => {
+      // Do not cache the failure: the next request must try to connect again.
+      mongoClientPromise = null;
+      throw error;
+    });
   }
 
   const client = await mongoClientPromise;
@@ -439,6 +444,84 @@ const streamVideo = async (fileName, req, res) => {
   Readable.fromWeb(lastResponse.body).pipe(res);
 };
 
+// Landing videos processed by the content hub (HLS: playlists + segments per quality).
+// They are looked up by title in Mongo, so a re-processed video is picked up without a deploy.
+const hlsVideoTitles = {
+  home: 'Video home para landing de mi terreno en mexico',
+  hover1: 'Hover 1 de landing mi terreno en mexico',
+  hover2: 'Hover 2 de landing mi terreno en mexico',
+};
+const hlsFilePattern = /^(master\.m3u8|(?:720p|1080p)\/(?:playlist\.m3u8|segment_\d{1,6}\.ts))$/;
+const hlsFolderPattern = /^Videos\/HLS\/[A-Za-z0-9_-]+$/;
+const HLS_FOLDER_TTL = 10 * 60 * 1000;
+const hlsFolderCache = new Map();
+
+const resolveHlsFolder = async (slot) => {
+  const cached = hlsFolderCache.get(slot);
+
+  if (cached && cached.expiresAt > Date.now()) return cached.folder;
+
+  try {
+    const db = await getMongoDb();
+    const doc = await db.collection(CONTENT_COLLECTION).findOne(
+      { nombre: hlsVideoTitles[slot], 'videoProcessing.status': 'completed' },
+      { projection: { 'videoProcessing.hlsFolder': 1 }, sort: { updatedAt: -1 } },
+    );
+    const folder = doc?.videoProcessing?.hlsFolder;
+
+    if (typeof folder !== 'string' || !hlsFolderPattern.test(folder)) return null;
+
+    hlsFolderCache.set(slot, { folder, expiresAt: Date.now() + HLS_FOLDER_TTL });
+    return folder;
+  } catch (error) {
+    // A Mongo hiccup should not break playback: keep using the last known folder.
+    if (cached) return cached.folder;
+    throw error;
+  }
+};
+
+const streamHlsFile = async (slot, filePath, req, res) => {
+  const folder = await resolveHlsFolder(slot);
+
+  if (!folder) {
+    sendJson(res, 404, { error: 'Video not found' });
+    return;
+  }
+
+  const auth = await authorizeAccount();
+  const response = await fetchBackblazeFile(auth, `${folder}/${filePath}`, req);
+
+  if (!(response.ok || response.status === 206)) {
+    const errorBody = await parseJsonResponse(response);
+    sendJson(res, response.status === 401 ? 502 : response.status, {
+      error: errorBody?.message || errorBody?.code || response.statusText || 'Video not found',
+    });
+    return;
+  }
+
+  const isPlaylist = filePath.endsWith('.m3u8');
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Accept-Ranges': 'bytes',
+    // Public so Cloudflare can cache the segments at the edge. Playlists are short-lived.
+    'Cache-Control': isPlaylist ? 'public, max-age=300' : 'public, max-age=86400',
+    'Content-Type': isPlaylist ? 'application/vnd.apple.mpegurl' : 'video/mp2t',
+  };
+
+  for (const [upstreamName, headerName] of [
+    ['content-length', 'Content-Length'],
+    ['content-range', 'Content-Range'],
+    ['last-modified', 'Last-Modified'],
+    ['etag', 'ETag'],
+  ]) {
+    const headerValue = response.headers.get(upstreamName);
+    if (headerValue) headers[headerName] = headerValue;
+  }
+
+  res.writeHead(response.status, headers);
+  Readable.fromWeb(response.body).pipe(res);
+};
+
 const server = http.createServer(async (req, res) => {
   try {
     const requestUrl = new URL(req.url, `http://${req.headers.host}`);
@@ -469,6 +552,21 @@ const server = http.createServer(async (req, res) => {
       const insertedId = await createLead(payload);
 
       sendJson(res, 201, { ok: true, id: insertedId.toString() });
+      return;
+    }
+
+    const hlsPrefix = ['/api/hls/', '/hls/'].find((prefix) => requestUrl.pathname.startsWith(prefix));
+
+    if (req.method === 'GET' && hlsPrefix) {
+      const [slot, ...rest] = decodeURIComponent(requestUrl.pathname.slice(hlsPrefix.length)).split('/');
+      const filePath = rest.join('/');
+
+      if (!Object.hasOwn(hlsVideoTitles, slot) || !hlsFilePattern.test(filePath)) {
+        sendJson(res, 404, { error: 'Video not found' });
+        return;
+      }
+
+      await streamHlsFile(slot, filePath, req, res);
       return;
     }
 

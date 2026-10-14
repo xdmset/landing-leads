@@ -4,17 +4,13 @@ import './App.css';
 const videoApiBase = import.meta.env.VITE_VIDEO_API_BASE_URL || '';
 const privateVideo = (fileName) => `${videoApiBase}/api/videos/${encodeURIComponent(fileName)}`;
 
-const heroVideo = privateVideo('Video Home – Versión 3.0.mp4');
+// Original MP4s: only a fallback now, if the processed version cannot be played.
+const heroVideo = privateVideo('Video Home – Versión 3.0.mp4');
+const mapVideo = privateVideo('DESARROLLOS ENG.mp4');
+const resortVideo = privateVideo('tomas desarrollos eng.mp4');
 
-const carouselVideos = [
-  privateVideo('Primer residente CM Península.mp4'),
-  privateVideo('Luis Subt.mp4'),
-  privateVideo('MiriamAraujo Subt.mp4'),
-  privateVideo('Carlos Subt.mp4'),
-];
-
-const mapVideo    = privateVideo('DESARROLLOS ENG.mp4');          
-const resortVideo = privateVideo('tomas desarrollos eng.mp4');    
+// Processed versions (HLS, 720p) served by the backend from the content hub: home / hover1 / hover2.
+const hlsPlaylist = (slot) => `${videoApiBase}/api/hls/${slot}/720p/playlist.m3u8`;
 
 const defaultPhoneCodes = [
   { code: '+1', flag: '🇺🇸', iso: 'US', name: 'United States' },
@@ -105,20 +101,39 @@ const isPhoneLengthValid = (phoneLib, iso, digits, rules) => {
   }
 };
 
-function PhoneFlag({ iso, flag }) {
+const prefersReducedMotion = () => (
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+);
+
+/* ---------- Icons (inline, stroke) ---------- */
+
+const ArrowRight = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+);
+const CheckIcon = ({ size = 14, strokeWidth = 3 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
+);
+const ChevronDown = () => (
+  <svg className="pick-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+);
+
+/* ---------- Phone country picker ---------- */
+
+function CountryBadge({ iso, flag }) {
   const [failed, setFailed] = useState(false);
 
-  if (!iso || failed) return <span className="lux-flag" aria-hidden="true">{flag}</span>;
+  if (!iso) return <span className="iso-badge iso-badge--emoji" aria-hidden="true">{flag}</span>;
+  if (failed) return <span className="iso-badge" aria-hidden="true">{iso}</span>;
 
   const code = iso.toLowerCase();
 
   return (
     <img
-      className="phone-flag-img"
+      className="flag-img"
       src={`https://flagcdn.com/w40/${code}.png`}
       srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
-      width="24"
-      height="18"
+      width="28"
+      height="20"
       alt=""
       loading="lazy"
       decoding="async"
@@ -127,10 +142,12 @@ function PhoneFlag({ iso, flag }) {
   );
 }
 
-function PhoneCodePicker({ options, value, onChange, label, searchLabel, emptyLabel }) {
+function PhoneCodePicker({ options, value, onChange, label, searchLabel, emptyLabel, onOpenChange }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const rootRef = useRef(null);
+
+  useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -160,33 +177,36 @@ function PhoneCodePicker({ options, value, onChange, label, searchLabel, emptyLa
     : options;
 
   return (
-    <div className="lux-dropdown phone-code" ref={rootRef}>
+    <div className="pick-root" ref={rootRef}>
       <button
         type="button"
-        className="lux-trigger"
+        className="pick"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={`${label}: ${value.name} ${value.code}`}
         onClick={() => { setQuery(''); setOpen((current) => !current); }}
       >
-        <PhoneFlag key={value.iso || value.flag} iso={value.iso} flag={value.flag} />
-        <span className="lux-code-text">{value.code}</span>
-        <span className="lux-arrow" />
+        <CountryBadge key={value.iso || value.flag} iso={value.iso} flag={value.flag} />
+        <span>{value.code}</span>
+        <ChevronDown />
       </button>
       {open && (
-        <div className="phone-menu">
-          <input
-            type="search"
-            className="phone-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={searchLabel}
-            aria-label={searchLabel}
-            autoComplete="off"
-            // On phones the keyboard would cover the list, so only focus the search on desktop.
-            autoFocus={window.matchMedia('(pointer: fine)').matches}
-          />
-          <ul className="phone-options" role="listbox" aria-label={label}>
+        <div className="pick-menu">
+          <div className="pick-search-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+            <input
+              type="search"
+              className="pick-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={searchLabel}
+              aria-label={searchLabel}
+              autoComplete="off"
+              // On phones the keyboard would cover the list, so only focus the search on desktop.
+              autoFocus={window.matchMedia('(pointer: fine)').matches}
+            />
+          </div>
+          <ul className="pick-options" role="listbox" aria-label={label}>
             {visible.map((option) => {
               const selected = option.code === value.code && option.flag === value.flag;
 
@@ -194,29 +214,95 @@ function PhoneCodePicker({ options, value, onChange, label, searchLabel, emptyLa
                 <li key={`${option.iso}|${option.code}|${option.name}`} role="option" aria-selected={selected}>
                   <button
                     type="button"
-                    className={`lux-item ${selected ? 'selected' : ''}`}
+                    className={`pick-option${selected ? ' is-selected' : ''}`}
                     onClick={() => { onChange(option); setOpen(false); }}
                   >
-                    <PhoneFlag key={option.iso || option.flag} iso={option.iso} flag={option.flag} />
-                    <span className="lux-code-text">{option.code}</span>
-                    <span className="lux-item-text">{option.name}</span>
+                    <CountryBadge key={option.iso || option.flag} iso={option.iso} flag={option.flag} />
+                    <span className="pick-option-name">{option.name}</span>
+                    <span className="pick-option-code">{option.code}</span>
+                    {selected && <span className="pick-option-check"><CheckIcon size={16} strokeWidth={2.6} /></span>}
                   </button>
                 </li>
               );
             })}
-            {!visible.length && <li className="phone-empty">{emptyLabel}</li>}
+            {!visible.length && <li className="pick-empty">{emptyLabel}</li>}
           </ul>
         </div>
       )}
     </div>
   );
 }
-const galleryImages = [
-  {"src": "/gallery/family-club.webp", "type": "developments", "es": "Family Club · Cancún", "en": "Family Club · Cancún", "description": {"es": "La vida que imaginabas, en el Caribe mexicano.", "en": "The lifestyle you imagined, in the Mexican Caribbean."}, "width": 1600, "height": 900, "render": true, "featured": true},
-  {"src": "/gallery/antara.webp", "type": "homes", "es": "Casa modelo Antara", "en": "Antara home model", "description": {"es": "Arquitectura para una nueva etapa.", "en": "Architecture for a new chapter."}, "width": 1600, "height": 1600, "render": true, "featured": false},
-  {"src": "/gallery/interior.webp", "type": "homes", "es": "Espacios para vivir", "en": "Spaces to live in", "description": {"es": "Tu hogar, desde adentro.", "en": "Your home, from the inside."}, "width": 905, "height": 517, "render": true, "featured": false},
-  {"src": "/gallery/aqua.webp", "type": "homes", "es": "Casa modelo Aqua", "en": "Aqua home model", "description": {"es": "Una fachada con personalidad propia.", "en": "A home with its own personality."}, "width": 1202, "height": 1600, "render": true, "featured": false},
-];
+
+/* ---------- Processed (HLS) video ---------- */
+
+// hls.js is only needed by browsers without native HLS (Safari/iOS play it natively), so it loads on demand.
+let hlsLibPromise = null;
+const loadHlsLib = () => {
+  if (!hlsLibPromise) {
+    hlsLibPromise = import('hls.js/light')
+      .then((module) => module.default)
+      .catch((error) => {
+        hlsLibPromise = null;
+        throw error;
+      });
+  }
+  return hlsLibPromise;
+};
+
+// Plays the processed HLS version in `videoRef`. `maxBuffer` is how many seconds hls.js loads ahead:
+// a small value only preloads the first segment (hover cards), a large one loads the whole loop (hero).
+// Any failure falls back to the original MP4.
+function useHlsSource(videoRef, slot, fallbackSrc, enabled, maxBuffer) {
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!enabled || !videoEl) return undefined;
+
+    let hls = null;
+    let cancelled = false;
+    let fellBack = false;
+
+    const playFallback = () => {
+      if (cancelled || fellBack) return;
+      fellBack = true;
+      if (hls) hls.destroy();
+      hls = null;
+      videoEl.src = fallbackSrc;
+    };
+
+    if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+      videoEl.addEventListener('error', playFallback, { once: true });
+      videoEl.src = hlsPlaylist(slot);
+      return () => {
+        cancelled = true;
+        videoEl.removeEventListener('error', playFallback);
+      };
+    }
+
+    loadHlsLib()
+      .then((Hls) => {
+        if (cancelled) return;
+        if (!Hls.isSupported()) {
+          playFallback();
+          return;
+        }
+
+        hls = new Hls({ maxBufferLength: maxBuffer, maxMaxBufferLength: maxBuffer, enableWorker: true });
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) playFallback();
+        });
+        hls.loadSource(hlsPlaylist(slot));
+        hls.attachMedia(videoEl);
+      })
+      .catch(playFallback);
+
+    return () => {
+      cancelled = true;
+      if (hls) hls.destroy();
+    };
+  }, [videoRef, slot, fallbackSrc, enabled, maxBuffer]);
+}
+
+/* ---------- Cards with hover video ---------- */
 
 const mobileHoverVideoDelayMs = 900;
 
@@ -227,30 +313,139 @@ const getHoverVideoDelay = () => {
     : 0;
 };
 
+const playMutedVideo = (video) => {
+  if (!video) return;
+
+  video.muted = true;
+  video.defaultMuted = true;
+  video.playsInline = true;
+
+  video.play().catch((error) => {
+    console.log('Autoplay blocked:', error);
+  });
+};
+
+function HoverVideoCard({ image, imageAlt, video, slot, children }) {
+  const [hovered, setHovered] = useState(false);
+  const [near, setNear] = useState(false);
+  const [videoActive, setVideoActive] = useState(false);
+  const cardRef = useRef(null);
+  const videoRef = useRef(null);
+
+  // Start fetching the video just before the card scrolls into view, so it is ready when the hover happens.
+  useEffect(() => {
+    if (!cardRef.current) return undefined;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setNear(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '400px 0px' });
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useHlsSource(videoRef, slot, video, near && !prefersReducedMotion(), 8);
+
+  // On phones there is no hover: the video starts when the card is mostly on screen.
+  useEffect(() => {
+    if (!window.matchMedia('(max-width: 600px)').matches || !cardRef.current) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setHovered(entry.isIntersecting && entry.intersectionRatio >= 0.45),
+      { threshold: [0, 0.45, 0.75] },
+    );
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return undefined;
+
+    if (hovered && !prefersReducedMotion()) {
+      const timer = setTimeout(() => {
+        setVideoActive(true);
+        playMutedVideo(videoEl);
+      }, getHoverVideoDelay());
+      return () => clearTimeout(timer);
+    }
+
+    setVideoActive(false);
+    videoEl.pause();
+    videoEl.currentTime = 0;
+    return undefined;
+  }, [hovered]);
+
+  return (
+    <article
+      ref={cardRef}
+      className="card reveal"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <img className="card-media" src={image} alt={imageAlt} loading="lazy" decoding="async" />
+      <div className={`card-hover-video${videoActive ? ' is-active' : ''}`}>
+        <video ref={videoRef} loop muted playsInline preload="auto" poster={image} />
+      </div>
+      <div className="card-scrim" aria-hidden="true" />
+      <div className="card-content">{children}</div>
+    </article>
+  );
+}
+
+/* ---------- Gallery data ---------- */
+
+// category: 'homes' → toggle "Casas"; 'amenities' → toggle "Amenidades".
+// To add photos, drop them in /public/gallery and add an entry here. The first one of each category shows large.
+const galleryImages = [
+  { src: '/gallery/antara.webp', category: 'homes', es: 'Casa modelo Antara', en: 'Antara home model', description: { es: 'Arquitectura para una nueva etapa.', en: 'Architecture for a new chapter.' }, width: 1600, height: 1600, render: true },
+  { src: '/gallery/aqua.webp', category: 'homes', es: 'Casa modelo Aqua', en: 'Aqua home model', description: { es: 'Una fachada con personalidad propia.', en: 'A home with its own personality.' }, width: 1202, height: 1600, render: true },
+  { src: '/gallery/interior.webp', category: 'homes', es: 'Espacios para vivir', en: 'Spaces to live in', description: { es: 'Tu hogar, desde adentro.', en: 'Your home, from the inside.' }, width: 905, height: 517, render: true },
+  { src: '/gallery/family-club.webp', category: 'amenities', es: 'Family Club · Cancún', en: 'Family Club · Cancún', description: { es: 'La vida que imaginabas, en el Caribe mexicano.', en: 'The lifestyle you imagined, in the Mexican Caribbean.' }, width: 1600, height: 900, render: true },
+  { src: '/gallery/amenidades.webp', category: 'amenities', es: 'Vive estilo resort', en: 'Live resort style', description: { es: 'Amenidades de nuestros desarrollos.', en: 'Amenities across our developments.' }, render: true },
+];
+
+// Bento layout: the first image is large, the rest fill the grid without gaps for 1–5 images.
+const tileLayout = (index, total) => {
+  if (index === 0) return total === 1 ? 'tile--full' : 'tile--feature';
+  if (total === 2) return 'tile--tall';
+  if (total === 3) return 'tile--wide';
+  if (total === 4) return index === 3 ? 'tile--wide' : '';
+  if (index < 5) return '';
+  const leftover = (total - 5) % 4;
+  const isLastRow = index >= total - leftover;
+  if (!isLastRow) return '';
+  if (leftover === 1) return 'tile--full';
+  if (leftover === 2) return 'tile--wide';
+  if (leftover === 3 && index === total - 1) return 'tile--wide';
+  return '';
+};
+
+/* ---------- Copy ---------- */
 
 const content = {
   en: {
     moreInfo: 'I want more information',
-    clientsPurchased: 'WHO HAVE ALREADY PURCHASED A LOT OR HOME WITH US',
-    galleryEyebrow: 'YOUR NEXT CHAPTER STARTS HERE',
-    galleryTitle: 'Homes and lots in Mexico',
-    gallerySubtitle: 'No credit check. No banks. Direct financing from $149 USD per month.*',
-    galleryAll: 'All',
-    galleryHomes: 'Homes',
-    galleryDevelopments: 'Developments',
-    galleryView: 'View image',
-    galleryClose: 'Close gallery',
-    galleryPrevious: 'Previous image',
-    galleryNext: 'Next image',
-    renderLabel: 'Representative render',
-    pricingNote: '*Starting monthly payment applies to selected lots. Home pricing is quoted separately. Subject to availability, down payment, term and exchange rate. Restrictions apply.',
+    register: 'Sign up',
+    viewGallery: 'View gallery',
     logo: '/CIUDAD MADERAS BLANCO INGLÉS.png',
-    headerTitle: "The largest real estate developer in Mexico",
+    pageTitle: 'My Lot in Mexico',
+    switchLang: 'Cambiar a español',
+    heroBadge: 'INVEST FROM WHEREVER YOU ARE',
+    heroTitle: 'Invest in lots and homes in Mexico',
+    heroTitleAccent: 'from the USA',
+    heroText: 'The largest real estate developer in Mexico. No credit check, no banks and direct financing from',
+    heroTextPrice: '$149 USD per month.*',
+    paymentsLabel: 'SECURE PAYMENTS THROUGH',
     trustedBy: 'TRUSTED BY',
     satisfiedClients: 'SATISFIED CLIENTS',
-    paymentsLabel: 'Secure payments through',
-    residentLabel: 'RESIDENT',
-    storiesLabel: 'STORIES',
+    clientsPurchased: 'who have already purchased a lot or home with us',
+    monthlyFrom: 'MONTHLY PAYMENTS FROM',
+    lotsAvailable: 'Lots available',
+    mapAlt: 'Map of developments',
+    amenitiesAlt: 'Amenities',
     anOptionFor: 'AN OPTION FOR',
     everyone: 'EVERYONE',
     developments: 'DEVELOPMENTS',
@@ -258,20 +453,91 @@ const content = {
     builtYour: 'BUILD YOUR',
     home: 'HOME',
     live: 'LIVE',
-    resort: 'RESORT',
+    resort: 'Resort',
     style: 'STYLE',
+    galleryEyebrow: 'YOUR NEXT CHAPTER STARTS HERE',
+    galleryTitle: 'Homes and lots',
+    galleryTitleAccent: 'in Mexico',
+    gallerySubtitle: 'No credit check. No banks. Direct financing from $149 USD per month.*',
+    galleryTabsLabel: 'Gallery type',
+    galleryHomes: 'Homes',
+    galleryAmenities: 'Amenities',
+    galleryView: 'View image',
+    galleryClose: 'Close gallery',
+    galleryPrevious: 'Previous image',
+    galleryNext: 'Next image',
+    galleryCollection: 'CIUDAD MADERAS',
+    renderLabel: 'REPRESENTATIVE RENDER',
+    photoLabel: 'DESTINATION PHOTOGRAPHY',
+    pricingNote: '*Monthly payments from $149 USD apply to selected lots. Home pricing is quoted separately. Subject to availability, down payment, term and exchange rate. Restrictions apply.',
+    formEyebrow: 'SIGN UP TODAY',
     formTitle1: 'Tell us a bit about you',
+    formTitle2: "and we'll take it from there.",
+    perMonth: 'PER MONTH',
+    benefits: ['No credit check', 'Owner financing, no banks', 'Pay securely from the USA'],
+    formCardTitle: 'Get information',
+    formCardText: "Leave your details and we'll contact you soon.",
     fullName: 'Full name',
+    fullNamePlaceholder: 'e.g. Mary Johnson',
     email: 'Email',
+    emailPlaceholder: 'you@example.com',
     phone: 'Phone number',
     phoneCodeLabel: 'Phone country code',
     phoneSearch: 'Search country or code',
     phoneNoResults: 'No countries found',
     phoneDigits: 'digits',
     consent: 'I agree to be contacted through any of the provided means to receive information.',
-    send: 'SEND',
+    send: 'I WANT MORE INFORMATION',
     sending: 'SENDING...',
-    sent: 'Thanks. We will contact you soon.',
+    thanksTitle: 'Thank you!',
+    sent: 'We will contact you soon.',
+    sendAnother: 'Submit another',
+    privacy: 'Privacy Notice',
+    privacyLead: 'We will use your data to contact you and send you information about our developments. See our',
+    privacyClose: 'Close privacy notice',
+    privacyNotice: {
+      title: 'Privacy Notice',
+      updated: 'Last updated: October 14, 2026',
+      sections: [
+        {
+          heading: 'Who is responsible for your data?',
+          paragraphs: ['Ciudad Maderas, located at Blvd. Bernardo Quintana #160, Suite 5 and 6, Carretas Neighborhood, Querétaro, Qro., Mexico, is responsible for the use and protection of your personal data, in accordance with the Mexican Federal Law on Protection of Personal Data Held by Private Parties.'],
+        },
+        {
+          heading: 'Personal data we collect',
+          paragraphs: ['When you fill in the form on this website we collect your full name, email address, phone number and its country code. We also store the language you browsed in and the web address and campaign parameters you registered from, so we know which ad or link brought you here. We do not request sensitive personal data.'],
+        },
+        {
+          heading: 'What we use your data for',
+          paragraphs: ['Your data may be used to:'],
+          items: [
+            'Contact you by phone (call or message), email or messaging apps to give you information about our lots, homes, developments and financing options.',
+            'Follow up on your request and answer your questions.',
+            'Schedule a call or a visit, if you ask us to.',
+          ],
+        },
+        {
+          heading: 'Cookies and measurement',
+          paragraphs: ['This website uses Google Tag Manager, Google Analytics and campaign measurement tools to understand how it is used. These tools may use cookies and identifiers. They do not receive your name, email or phone number. You can disable cookies in your browser settings.'],
+        },
+        {
+          heading: 'Who we share your data with',
+          paragraphs: ['We only share your data with companies related to Ciudad Maderas and with providers that help us contact you and store the information (for example hosting and customer management services), for the purposes described in this notice.'],
+        },
+        {
+          heading: 'Your rights',
+          paragraphs: [
+            'You can access your data, correct it if it is inaccurate, delete it, object to its use (ARCO rights) or withdraw your consent at any time. To do so, send a written request to the address above including your full name, the contact details you registered with, a clear description of the right you want to exercise and an identification. We will reply within the deadlines set by law.',
+            'You can also ask us to stop contacting you at any time, through the same channel we use to contact you.',
+          ],
+        },
+        {
+          heading: 'Changes to this notice',
+          paragraphs: ['Any change will be published on this page. We recommend reviewing it from time to time.'],
+        },
+      ],
+      closing: 'By submitting the form and accepting the contact authorization, you confirm that you have read this notice.',
+    },
     sendError: 'Something went wrong. Please try again.',
     duplicateLead: 'This name or email has already been registered.',
     validation: {
@@ -283,39 +549,28 @@ const content = {
       phoneInvalidRange: 'Enter a phone number with {min} to {max} digits.',
       consentRequired: 'Please accept the contact authorization.',
     },
-    from: 'FROM',
-    monthlyPayment: 'MONTHLY PAYMENT',
-    noCredit: 'NO CREDIT CHECK | OWNER FINANCING',
     footer: 'Copyright Ciudad Maderas | Representative information and images subject to change without prior notice. Suggested furniture. Restrictions apply. | Blvd. Bernardo Quintana #160, Suite 5 and 6, Carretas Neighborhood, Querétaro, Qro. | Privacy Notice | Terms and Conditions',
-    carouselImages: [
-      'gallery/testimonio-en.webp',
-      'gallery/luis-en.webp',
-      'gallery/miriam-en.webp',
-      'gallery/carlos-en.webp',
-    ],
   },
   es: {
     moreInfo: 'Quiero más información',
-    clientsPurchased: 'QUE YA COMPRARON SU TERRENO O CASA CON NOSOTROS',
-    galleryEyebrow: 'TU PRÓXIMA HISTORIA EMPIEZA AQUÍ',
-    galleryTitle: 'Casas y terrenos en México',
-    gallerySubtitle: 'Sin revisión de buró. Sin bancos. Con financiamiento directo desde $149 USD al mes.*',
-    galleryAll: 'Todo',
-    galleryHomes: 'Casas',
-    galleryDevelopments: 'Desarrollos',
-    galleryView: 'Ver imagen',
-    galleryClose: 'Cerrar galería',
-    galleryPrevious: 'Imagen anterior',
-    galleryNext: 'Siguiente imagen',
-    renderLabel: 'Render representativo',
-    pricingNote: '*Mensualidad desde para terrenos seleccionados. Las casas se cotizan por separado. Sujeto a disponibilidad, enganche, plazo y tipo de cambio. Aplican restricciones.',
+    register: 'Registrarme',
+    viewGallery: 'Ver galería',
     logo: '/CIUDAD MADERAS ESP BL.png',
-    headerTitle: 'La desarrolladora inmobiliaria más grande de México',
+    pageTitle: 'Mi Terreno en México',
+    switchLang: 'Switch to English',
+    heroBadge: 'INVIERTE DESDE DONDE ESTÉS',
+    heroTitle: 'Invierte en terrenos y casas en México',
+    heroTitleAccent: 'desde USA',
+    heroText: 'La desarrolladora inmobiliaria más grande de México. Sin revisión de buró, sin bancos y con financiamiento directo desde',
+    heroTextPrice: '$149 USD al mes.*',
+    paymentsLabel: 'PAGOS SEGUROS A TRAVÉS DE',
     trustedBy: 'CON LA CONFIANZA DE',
     satisfiedClients: 'CLIENTES SATISFECHOS',
-    paymentsLabel: 'Pagos seguros a través de',
-    residentLabel: 'HISTORIAS',
-    storiesLabel: 'DE RESIDENTES',
+    clientsPurchased: 'que ya compraron su terreno o casa con nosotros',
+    monthlyFrom: 'MENSUALIDAD DESDE',
+    lotsAvailable: 'Terrenos disponibles',
+    mapAlt: 'Mapa de desarrollos',
+    amenitiesAlt: 'Amenidades',
     anOptionFor: 'UNA OPCIÓN PARA',
     everyone: 'TODOS',
     developments: 'DESARROLLOS',
@@ -323,20 +578,91 @@ const content = {
     builtYour: 'CONSTRUYE TU',
     home: 'HOGAR',
     live: 'VIVE',
-    resort: 'RESORT',
+    resort: 'Resort',
     style: 'ESTILO',
+    galleryEyebrow: 'TU PRÓXIMA HISTORIA EMPIEZA AQUÍ',
+    galleryTitle: 'Casas y terrenos',
+    galleryTitleAccent: 'en México',
+    gallerySubtitle: 'Sin revisión de buró. Sin bancos. Con financiamiento directo desde $149 USD al mes.*',
+    galleryTabsLabel: 'Tipo de galería',
+    galleryHomes: 'Casas',
+    galleryAmenities: 'Amenidades',
+    galleryView: 'Ver imagen',
+    galleryClose: 'Cerrar galería',
+    galleryPrevious: 'Imagen anterior',
+    galleryNext: 'Siguiente imagen',
+    galleryCollection: 'CIUDAD MADERAS',
+    renderLabel: 'RENDER REPRESENTATIVO',
+    photoLabel: 'FOTOGRAFÍA DEL DESTINO',
+    pricingNote: '*Mensualidad desde $149 USD en terrenos seleccionados. Las casas se cotizan por separado. Sujeto a disponibilidad, enganche, plazo y tipo de cambio. Aplican restricciones.',
+    formEyebrow: 'REGÍSTRATE HOY',
     formTitle1: 'Cuéntanos un poco sobre ti',
+    formTitle2: 'y nosotros nos encargamos del resto.',
+    perMonth: 'AL MES',
+    benefits: ['Sin verificación de crédito', 'Financiamiento propio, sin bancos', 'Paga de forma segura desde USA'],
+    formCardTitle: 'Recibe información',
+    formCardText: 'Déjanos tus datos y te contactaremos pronto.',
     fullName: 'Nombre completo',
+    fullNamePlaceholder: 'Ej. María González',
     email: 'Correo electrónico',
+    emailPlaceholder: 'tucorreo@ejemplo.com',
     phone: 'Número de teléfono',
     phoneCodeLabel: 'Código de país del teléfono',
     phoneSearch: 'Buscar país o código',
     phoneNoResults: 'No se encontraron países',
     phoneDigits: 'dígitos',
     consent: 'Acepto ser contactado a través de cualquiera de los medios proporcionados para recibir información.',
-    send: 'ENVIAR',
+    send: 'QUIERO MÁS INFORMACIÓN',
     sending: 'ENVIANDO...',
-    sent: 'Gracias. Te contactaremos pronto.',
+    thanksTitle: '¡Gracias!',
+    sent: 'Te contactaremos pronto.',
+    sendAnother: 'Enviar otro registro',
+    privacy: 'Aviso de Privacidad',
+    privacyLead: 'Usaremos tus datos para contactarte y enviarte información sobre nuestros desarrollos. Consulta nuestro',
+    privacyClose: 'Cerrar aviso de privacidad',
+    privacyNotice: {
+      title: 'Aviso de Privacidad',
+      updated: 'Última actualización: 14 de octubre de 2026',
+      sections: [
+        {
+          heading: '¿Quién es responsable de tus datos?',
+          paragraphs: ['Ciudad Maderas, con domicilio en Blvd. Bernardo Quintana #160, Suite 5 y 6, Col. Carretas, Querétaro, Qro., es responsable del uso y la protección de tus datos personales, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.'],
+        },
+        {
+          heading: 'Datos personales que recabamos',
+          paragraphs: ['Al llenar el formulario de este sitio recabamos tu nombre completo, correo electrónico, número de teléfono y su código de país. También guardamos el idioma en el que navegaste y la dirección de la página y los parámetros de campaña desde los que te registraste, para saber qué anuncio o enlace te trajo. No solicitamos datos personales sensibles.'],
+        },
+        {
+          heading: 'Para qué usamos tus datos',
+          paragraphs: ['Tus datos podrán usarse para:'],
+          items: [
+            'Contactarte por teléfono (llamada o mensaje), correo electrónico o aplicaciones de mensajería para darte información sobre nuestros terrenos, casas, desarrollos y opciones de financiamiento.',
+            'Dar seguimiento a tu solicitud y resolver tus dudas.',
+            'Programar una llamada o una visita, si así lo solicitas.',
+          ],
+        },
+        {
+          heading: 'Cookies y medición',
+          paragraphs: ['Este sitio usa Google Tag Manager, Google Analytics y herramientas de medición de campañas para conocer cómo se utiliza. Estas herramientas pueden usar cookies e identificadores. No reciben tu nombre, correo ni teléfono. Puedes desactivar las cookies desde la configuración de tu navegador.'],
+        },
+        {
+          heading: 'Con quién compartimos tus datos',
+          paragraphs: ['Solo compartimos tus datos con empresas relacionadas con Ciudad Maderas y con proveedores que nos ayudan a contactarte y a almacenar la información (por ejemplo, servicios de alojamiento y de gestión de clientes), para las finalidades de este aviso.'],
+        },
+        {
+          heading: 'Tus derechos',
+          paragraphs: [
+            'Puedes acceder a tus datos, rectificarlos si son inexactos, cancelarlos, oponerte a su uso (derechos ARCO) o revocar tu consentimiento en cualquier momento. Para hacerlo, envía una solicitud por escrito al domicilio indicado arriba con tu nombre completo, los datos de contacto con los que te registraste, la descripción clara del derecho que quieres ejercer y una identificación. Responderemos en los plazos que marca la ley.',
+            'También puedes pedirnos que dejemos de contactarte en cualquier momento, por el mismo medio por el que te contactemos.',
+          ],
+        },
+        {
+          heading: 'Cambios a este aviso',
+          paragraphs: ['Cualquier cambio se publicará en esta misma página. Te recomendamos revisarla de vez en cuando.'],
+        },
+      ],
+      closing: 'Al enviar el formulario y aceptar la autorización de contacto, confirmas que leíste este aviso.',
+    },
     sendError: 'Algo salió mal. Inténtalo de nuevo.',
     duplicateLead: 'Este nombre o correo ya fue registrado.',
     validation: {
@@ -348,39 +674,27 @@ const content = {
       phoneInvalidRange: 'Ingresa un teléfono de {min} a {max} dígitos.',
       consentRequired: 'Acepta la autorización de contacto.',
     },
-    from: 'DESDE',
-    monthlyPayment: 'PAGO MENSUAL',
-    noCredit: 'SIN VERIFICACIÓN DE CRÉDITO | FINANCIAMIENTO PROPIO',
     footer: 'Copyright Ciudad Maderas | Información e imágenes representativas sujetas a cambio sin previo aviso. Mobiliario sugerido. Aplican restricciones. | Blvd. Bernardo Quintana #160, Suite 5 y 6, Col. Carretas, Querétaro, Qro. | Aviso de Privacidad | Términos y Condiciones',
-    carouselImages: [
-      'gallery/testimonio-es.webp',
-      'gallery/luis-es.webp',
-      'gallery/miriam-es.webp',
-      'gallery/carlos-es.webp',
-    ],
   },
 };
 
+const banks = [
+  { src: '/bank-pnc-cropped.png', alt: 'PNC Bank' },
+  { src: '/bank-of-america-cropped.png', alt: 'Bank of America' },
+  { src: '/zelle-cropped.png', alt: 'Zelle' },
+  { src: '/chase-cropped.png', alt: 'Chase' },
+];
+
+const clientsTotal = 100000;
+
 function App() {
   const [lang, setLang] = useState('es');
-  const [carouselIdx, setCarouselIdx] = useState(0);
-  const [carouselAnimating, setCarouselAnimating] = useState(false);
-  const [showVideo, setShowVideo] = useState(false);
-  const [centerHovered, setCenterHovered] = useState(false);
-  const [rightHovered, setRightHovered] = useState(false);
-  const [centerVideoActive, setCenterVideoActive] = useState(false);
-  const [rightVideoActive, setRightVideoActive] = useState(false);
+  const [galleryTab, setGalleryTab] = useState('homes');
   const [activeImage, setActiveImage] = useState(0);
+  const [clientsCount, setClientsCount] = useState(() => (prefersReducedMotion() ? clientsTotal : 0));
   const galleryDialogRef = useRef(null);
-  const filteredGallery = galleryImages;
+  const privacyDialogRef = useRef(null);
   const heroVideoRef = useRef(null);
-  const videoRef = useRef(null);
-  const centerHoverVideoRef = useRef(null);
-  const rightHoverVideoRef = useRef(null);
-  const centerHoverDelayRef = useRef(null);
-  const rightHoverDelayRef = useRef(null);
-  const centerCardRef = useRef(null);
-  const rightCardRef = useRef(null);
 
   // LADAS DESDE LA API
   const [countriesRaw, setCountriesRaw] = useState([]);
@@ -388,20 +702,26 @@ function App() {
   const [selectedLada, setSelectedLada] = useState(defaultPhoneCodes[0]);
   const [phoneValue, setPhoneValue] = useState('');
   const [phoneLib, setPhoneLib] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const phoneRules = useMemo(() => getPhoneRules(phoneLib, selectedLada.iso), [phoneLib, selectedLada.iso]);
 
   const [formStatus, setFormStatus] = useState('idle');
   const [formMessage, setFormMessage] = useState('');
+  const [fieldError, setFieldError] = useState('');
   const isSubmittingLeadRef = useRef(false);
 
   const t = content[lang];
 
+  const homes = useMemo(() => galleryImages.filter((item) => item.category === 'homes'), []);
+  const amenities = useMemo(() => galleryImages.filter((item) => item.category === 'amenities'), []);
+  const filteredGallery = galleryTab === 'homes' ? homes : amenities;
+  const currentImage = filteredGallery[Math.min(activeImage, filteredGallery.length - 1)];
+
   useEffect(() => {
     document.documentElement.lang = lang;
-    document.title = lang === 'en' ? 'My Lot in Mexico' : 'Mi Terreno en México';
-  }, [lang]);
+    document.title = t.pageTitle;
+  }, [lang, t.pageTitle]);
 
- 
   useEffect(() => {
     loadPhoneLib()
       .then(setPhoneLib)
@@ -444,7 +764,7 @@ function App() {
           code: fullCode,
           flag: country.flag || '🏳️',
           iso: flagToIso(country.flag),
-          name: localizedName
+          name: localizedName,
         };
       })
       .filter((c) => c.code && c.code.length <= 5)
@@ -464,6 +784,54 @@ function App() {
     });
   }, [countriesRaw, lang]);
 
+  useHlsSource(heroVideoRef, 'home', heroVideo, !prefersReducedMotion(), 30);
+
+  // Hero video autoplay.
+  useEffect(() => {
+    if (!prefersReducedMotion()) playMutedVideo(heroVideoRef.current);
+  }, []);
+
+  // +100,000 count-up.
+  useEffect(() => {
+    if (prefersReducedMotion()) return undefined;
+
+    let frame = 0;
+    let start = null;
+    const duration = 1800;
+    const step = (ts) => {
+      if (start === null) start = ts;
+      const progress = Math.min(1, (ts - start) / duration);
+      setClientsCount(Math.round(clientsTotal * (1 - (1 - progress) ** 3)));
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    const timer = setTimeout(() => { frame = requestAnimationFrame(step); }, 700);
+
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  // Scroll reveal.
+  useEffect(() => {
+    const els = document.querySelectorAll('.reveal:not(.in-view)');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach((el) => el.classList.add('in-view'));
+      return undefined;
+    }
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in-view');
+          io.unobserve(e.target);
+        }
+      }),
+      { threshold: 0.08, rootMargin: '0px 0px -30px 0px' },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [lang, formStatus]);
+
   const handlePhoneChange = (event) => {
     const digits = sanitizePhone(event.target.value, selectedLada.code);
     setPhoneValue(capPhoneDigits(digits, phoneRules, selectedLada.code));
@@ -475,60 +843,44 @@ function App() {
     setPhoneValue((current) => capPhoneDigits(current, getPhoneRules(phoneLib, country.iso), country.code));
   };
 
-  const toggleLang = () => {
-    setLang((l) => (l === 'en' ? 'es' : 'en'));
-    setCarouselIdx(0);
-    setShowVideo(false);
-  };
+  const toggleLang = () => setLang((l) => (l === 'en' ? 'es' : 'en'));
 
-  const triggerCarousel = (newIdx) => {
-    setCarouselAnimating(true);
-    setCarouselIdx(newIdx);
-    setShowVideo(false);
-    setTimeout(() => setCarouselAnimating(false), 400);
-  };
-  
-  const next = () => triggerCarousel((carouselIdx + 1) % t.carouselImages.length);
-  const prev = () => triggerCarousel((carouselIdx - 1 + t.carouselImages.length) % t.carouselImages.length);
-
-  const openVideo = () => setShowVideo(true);
-
-  const playMutedVideo = (video) => {
-    if (!video) return;
-
-    video.muted = true;
-    video.defaultMuted = true;
-    video.playsInline = true;
-
-    video.play().catch((error) => {
-      console.log('Autoplay blocked:', error);
-    });
-  };
-
-  const closeVideo = () => {
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
-    setShowVideo(false);
-  };
-
-  const openGalleryImage = (item) => {
-    setActiveImage(galleryImages.indexOf(item));
-    galleryDialogRef.current?.showModal();
-  };
-
-  const scrollToForm = () => {
-    document.getElementById('lead-form')?.scrollIntoView({
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+  const scrollToId = (id) => {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: prefersReducedMotion() ? 'instant' : 'smooth',
       block: 'start',
     });
+  };
+
+  const openPrivacy = () => privacyDialogRef.current?.showModal();
+
+  const scrollToForm = () => {
+    scrollToId('contact-form');
     document.getElementById('full-name')?.focus({ preventScroll: true });
   };
 
+  const changeGalleryTab = (tab) => {
+    setGalleryTab(tab);
+    setActiveImage(0);
+  };
+
+  const openGalleryImage = (index) => {
+    setActiveImage(index);
+    galleryDialogRef.current?.showModal();
+  };
+
+  const nextImage = () => setActiveImage((i) => (i + 1) % filteredGallery.length);
+  const previousImage = () => setActiveImage((i) => (i - 1 + filteredGallery.length) % filteredGallery.length);
+
   const showFieldError = (field, message) => {
-    field.setCustomValidity(message);
-    field.reportValidity();
-    field.addEventListener('input', () => field.setCustomValidity(''), { once: true });
+    setFieldError(message);
+    field.setAttribute('aria-invalid', 'true');
+    field.focus();
+    const clear = () => {
+      field.removeAttribute('aria-invalid');
+      setFieldError('');
+    };
+    field.addEventListener(field.type === 'checkbox' ? 'change' : 'input', clear, { once: true });
   };
 
   const phoneLengthMessage = (rules) => (rules.min === rules.max
@@ -539,10 +891,8 @@ function App() {
     const fields = form.elements;
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    fields.fullName.setCustomValidity('');
-    fields.email.setCustomValidity('');
-    fields.phone.setCustomValidity('');
-    fields.consent.setCustomValidity('');
+    [fields.fullName, fields.email, fields.phone, fields.consent].forEach((field) => field.removeAttribute('aria-invalid'));
+    setFieldError('');
     setFormMessage('');
 
     if (!fields.fullName.value.trim()) {
@@ -658,406 +1008,414 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 600px)');
-    if (!mq.matches) return;
+  const resetForm = () => {
+    setFormStatus('idle');
+    setFormMessage('');
+    setFieldError('');
+    setPhoneValue('');
+  };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const isActive = entry.isIntersecting && entry.intersectionRatio >= 0.45 && !showVideo;
-          if (entry.target === centerCardRef.current) setCenterHovered(isActive);
-          if (entry.target === rightCardRef.current) setRightHovered(isActive);
-        });
-      },
-      { threshold: [0, 0.45, 0.75] }
-    );
-
-    if (centerCardRef.current) observer.observe(centerCardRef.current);
-    if (rightCardRef.current) observer.observe(rightCardRef.current);
-
-    return () => {
-      observer.disconnect();
-      setCenterHovered(false);
-      setRightHovered(false);
-    };
-  }, [showVideo]);
-
-  useEffect(() => {
-    const els = document.querySelectorAll('.reveal');
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => {
-        if (e.isIntersecting) e.target.classList.add('in-view');
-        if (e.isIntersecting) io.unobserve(e.target);
-      }),
-      { threshold: 0.08, rootMargin: '0px 0px -30px 0px' }
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [lang]);
-
-  useEffect(() => {
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) playMutedVideo(heroVideoRef.current);
-  }, []);
-
-  useEffect(() => {
-    const video = centerHoverVideoRef.current;
-
-    if (!video) return;
-
-    if (centerHovered && !showVideo && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      centerHoverDelayRef.current = setTimeout(() => {
-        setCenterVideoActive(true);
-        playMutedVideo(video);
-      }, getHoverVideoDelay());
-
-      return () => {
-        clearTimeout(centerHoverDelayRef.current);
-      };
-    }
-
-    clearTimeout(centerHoverDelayRef.current);
-    setCenterVideoActive(false);
-    video.pause();
-    video.currentTime = 0;
-  }, [centerHovered, showVideo]);
-
-  useEffect(() => {
-    const video = rightHoverVideoRef.current;
-
-    if (!video) return;
-
-    if (rightHovered && !showVideo && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      rightHoverDelayRef.current = setTimeout(() => {
-        setRightVideoActive(true);
-        playMutedVideo(video);
-      }, getHoverVideoDelay());
-
-      return () => {
-        clearTimeout(rightHoverDelayRef.current);
-      };
-    }
-
-    clearTimeout(rightHoverDelayRef.current);
-    setRightVideoActive(false);
-    video.pause();
-    video.currentTime = 0;
-  }, [rightHovered, showVideo]);
+  const errorText = fieldError || (formStatus === 'error' ? formMessage : '');
+  const phoneHint = phoneLib
+    ? (phoneRules.min === phoneRules.max
+      ? `${phoneValue.length}/${phoneRules.max} ${t.phoneDigits}`
+      : `${phoneRules.min}–${phoneRules.max} ${t.phoneDigits}`)
+    : '';
+  const pad = (n) => n.toString().padStart(2, '0');
 
   return (
     <main className="page-shell">
 
-      <button type="button" className="float-btn" onClick={scrollToForm} aria-controls="lead-form">
-        <svg className="float-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
-        </svg>
-        <span className="float-label">
-          {t.moreInfo}
-        </span>
-      </button>
-
-      <header className="header-bar">
-        <img src={t.logo} alt="Ciudad Maderas" className="logo-header" />
-        <span className="header-title">{t.headerTitle}</span>
-        <div className="header-right">
-          <button type="button" className="lang-toggle" onClick={toggleLang} aria-label={lang === 'es' ? 'Switch to English' : 'Cambiar a español'}>
-            <span>{lang === 'es' ? 'EN' : 'ES'}</span>
-          </button>
+      {/* HEADER */}
+      <header className="site-header">
+        <div className="wrap site-header-inner">
+          <img src={t.logo} alt="Ciudad Maderas" className="site-logo" />
+          <nav className="site-nav" aria-label={lang === 'es' ? 'Principal' : 'Main'}>
+            <button type="button" className="lang-toggle" onClick={toggleLang} aria-label={t.switchLang}>
+              {lang === 'es' ? 'EN' : 'ES'}
+            </button>
+            <button type="button" className="btn btn-gold btn-sm" onClick={scrollToForm} aria-controls="lead-form">{t.register}</button>
+          </nav>
         </div>
       </header>
 
-      <section className="hero-section">
-        <video
-          ref={heroVideoRef}
-          className="hero-video-background"
-          src={heroVideo}
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          poster="/gallery/cancun.webp"
-          onCanPlay={() => { if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) playMutedVideo(heroVideoRef.current); }}
-        />
-        <div className="hero-overlay-top" />
-        <div className="hero-overlay-bottom" />
-        <div className="hero-content">
-          <div className="hero-intro reveal">
-            <span className="eyebrow">CIUDAD MADERAS · MÉXICO</span>
-            <h1>{t.headerTitle}</h1>
-            <p className="hero-translation" lang={lang === 'es' ? 'en' : 'es'}>{content[lang === 'es' ? 'en' : 'es'].headerTitle}</p>
+      {/* HERO */}
+      <section className="hero">
+        <div className="hero-media" aria-hidden="true">
+          <video
+            ref={heroVideoRef}
+            loop
+            muted
+            playsInline
+            preload="auto"
+            poster="/gallery/cancun.webp"
+            onCanPlay={() => { if (!prefersReducedMotion()) playMutedVideo(heroVideoRef.current); }}
+          />
+        </div>
+        <div className="hero-shade" aria-hidden="true" />
+        <div className="hero-fade" aria-hidden="true" />
+
+        <div className="wrap hero-grid">
+          <div className="hero-copy">
+            <span className="hero-badge fade-up d1">
+              <span className="hero-badge-route">USA <ArrowRight size={12} /> MX</span>
+              {t.heroBadge}
+            </span>
+            <h1 className="hero-title fade-up d2">
+              {t.heroTitle} <span className="serif-accent">{t.heroTitleAccent}</span>
+            </h1>
+            <p className="hero-text fade-up d3">
+              {t.heroText} <strong>{t.heroTextPrice}</strong>
+            </p>
+            <div className="hero-actions fade-up d4">
+              <button type="button" className="btn btn-gold" onClick={scrollToForm}>
+                {t.moreInfo}<span className="btn-arrow"><ArrowRight /></span>
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => scrollToId('galeria')}>{t.viewGallery}</button>
+            </div>
+            <div className="hero-payments fade-up d5">
+              <span className="eyebrow-muted">{t.paymentsLabel}</span>
+              <div className="bank-row">
+                {banks.map((bank) => (
+                  <span className="bank-chip" key={bank.alt}><img src={bank.src} alt={bank.alt} /></span>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="hero-stats">
-            <span className="trusted reveal" style={{ transitionDelay: '0.05s' }}>{t.trustedBy}</span>
-            <span className="hero-number reveal" style={{ transitionDelay: '0.18s' }}>+100,000</span>
-            <span className="satisfied reveal" style={{ transitionDelay: '0.31s' }}>{t.satisfiedClients}<small>{t.clientsPurchased}</small></span>
-          </div>
-          <button type="button" className="primary-cta hero-cta reveal" onClick={scrollToForm}>{t.moreInfo}<span aria-hidden="true">↗</span></button>
-          <div className="payments-bar reveal" style={{ transitionDelay: '0.44s' }}>
-            <span className="payments-label">{t.paymentsLabel}</span>
-            <div className="payments-logos">
-              <img src="/bank-pnc-cropped.png" alt="PNC Bank" />
-              <img src="/bank-of-america-cropped.png" alt="Bank of America" />
-              <img src="/zelle-cropped.png" alt="Zelle" />
-              <img src="/chase-cropped.png" alt="Chase" />
+
+          <div className="hero-aside fade-up d6">
+            <div className="glass-card">
+              <div className="stat-block">
+                <span className="eyebrow-muted">{t.trustedBy}</span>
+                <span className="stat-number">+{clientsCount.toLocaleString('en-US')}</span>
+                <span className="stat-label">{t.satisfiedClients}</span>
+                <span className="stat-sub">{t.clientsPurchased}</span>
+              </div>
+              <div className="glass-divider" />
+              <div className="glass-price">
+                <div className="glass-price-copy">
+                  <span className="eyebrow-muted">{t.monthlyFrom}</span>
+                  <span className="glass-price-value"><strong>$149</strong><span>USD*</span></span>
+                </div>
+                <span className="live-chip"><span className="pulse-dot" />{t.lotsAvailable}</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CARDS SECTION */}
-      <section
-        className="cards-section"
-        style={{ backgroundImage: "url('/gallery/family-club.webp')" }}
-      >
-        <div className="cards-overlay" />
-        <div className="cards-row">
 
-          {/* CARD 1 - CARRUSEL */}
-          <div className={`card-carousel-wrapper reveal ${showVideo ? 'expanded' : ''}`}>
-            {!showVideo ? (
-              <div className="card-carousel">
-                <div className="card-label-top">{t.residentLabel}</div>
-                <div className="card-label-big">{t.storiesLabel}</div>
-                <button aria-label={lang === 'es' ? 'Testimonio anterior' : 'Previous story'} className="carousel-btn left" onClick={(e) => { e.stopPropagation(); prev(); }}>&#8249;</button>
-                <img
-                  src={`/${t.carouselImages[carouselIdx]}`}
-                  alt="Testimonio"
-                  className={`carousel-img${carouselAnimating ? ' animating' : ''}`}
-                />
-                <button type="button" className="carousel-play-btn" onClick={openVideo} aria-label={lang === 'es' ? 'Ver testimonio' : 'Play resident story'}>
-                  <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="24" cy="24" r="24" fill="rgba(0,0,0,0.45)"/>
-                    <polygon points="19,14 38,24 19,34" fill="white"/>
-                  </svg>
-                </button>
-                <button aria-label={lang === 'es' ? 'Siguiente testimonio' : 'Next story'} className="carousel-btn right" onClick={(e) => { e.stopPropagation(); next(); }}>&#8250;</button>
-                <div className="carousel-dots">
-                  {t.carouselImages.map((_, i) => (
-                    <button
-                      type="button"
-                      aria-label={`${lang === 'es' ? 'Testimonio' : 'Story'} ${i + 1}`}
-                      aria-pressed={i === carouselIdx}
-                      key={i}
-                      className={`dot${i === carouselIdx ? ' active' : ''}`}
-                      onClick={() => triggerCarousel(i)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="carousel-video-container">
-                <video
-                  ref={videoRef}
-                  src={carouselVideos[carouselIdx]}
-                  autoPlay
-                  controls
-                  playsInline
-                  className="carousel-video-player"
-                />
-                <button aria-label={lang === 'es' ? 'Cerrar video' : 'Close video'} className="carousel-video-close" onClick={closeVideo}>✕</button>
-                <div className="carousel-video-brand">
-                  <span>Ciudad Maderas</span>
-                  <span className="carousel-video-brand-sub">TERRENOS PREMIUM</span>
-                </div>
-                <div className="carousel-video-badge">{t.noCredit}</div>
-              </div>
-            )}
-          </div>
-
-          {/* CARD 2 - MAPA */}
-          <div
-            ref={centerCardRef}
-            className={`card-miniature card-center reveal ${showVideo ? 'faded' : ''}`}
-            onMouseEnter={() => !showVideo && setCenterHovered(true)}
-            onMouseLeave={() => setCenterHovered(false)}
-          >
-            <img src="/gallery/mapa.webp" alt="Mapa" />
-            <div className="card-center-text">
-              <span className="card-center-top">{t.anOptionFor}</span>
-              <span className="card-center-big">{t.everyone}</span>
-              <span className="card-center-num">30+</span>
-              <span className="card-center-dev">{t.developments}</span>
-              <span className="card-center-across">{t.acrossMexico}</span>
+      {/* CARDS */}
+      <section className="cards-section" style={{ backgroundImage: "url('/gallery/family-club.webp')" }}>
+        <div className="cards-overlay" aria-hidden="true" />
+        <div className="wrap cards-grid">
+          <HoverVideoCard image="/gallery/mapa.webp" imageAlt={t.mapAlt} video={mapVideo} slot="hover1">
+            <div className="card-top">
+              <span className="card-kicker">{t.anOptionFor}</span>
+              <span className="card-heading">{t.everyone}</span>
             </div>
-            <div className={`card-hover-video ${centerVideoActive && !showVideo ? 'is-active' : ''}`}>
-              <video
-                ref={centerHoverVideoRef}
-                src={mapVideo}
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                poster="/gallery/mapa.webp"
-              />
-            </div>
-          </div>
-
-          {/* CARD 3 - LIVE RESORT STYLE */}
-          <div
-            ref={rightCardRef}
-            className={`card-miniature card-right reveal ${showVideo ? 'faded' : ''}`}
-            onMouseEnter={() => !showVideo && setRightHovered(true)}
-            onMouseLeave={() => setRightHovered(false)}
-          >
-            <img src="/gallery/amenidades.webp" alt="Amenidades" />
-            <div className="card-right-text">
-              <span className="card-right-top">{t.builtYour}</span>
-              <span className="card-right-big">{t.home}</span>
-              <span className="card-right-live">{t.live}</span>
-              <span className="card-right-resort">{t.resort}</span>
-              <span className="card-right-style">{t.style}</span>
-            </div>
-            <div className={`card-hover-video ${rightVideoActive && !showVideo ? 'is-active' : ''}`}>
-              <video
-                ref={rightHoverVideoRef}
-                src={resortVideo}
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                poster="/gallery/amenidades.webp"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="gallery-section" aria-labelledby="gallery-title">
-        <div className="gallery-heading reveal">
-          <h2 id="gallery-title">{t.galleryTitle}</h2>
-          <p>{t.gallerySubtitle}</p>
-        </div>
-        <div className="gallery-grid" aria-label={t.galleryTitle}>
-          {galleryImages.map((item, index) => (
-            <button type="button" key={item.src} className="gallery-tile reveal"
-              style={{ transitionDelay: `${index * 50}ms` }}
-              aria-label={`${t.galleryView}: ${item[lang]}`}
-              onClick={() => openGalleryImage(item)}>
-              <span className="gallery-image-frame">
-                <img src={item.src} alt={item[lang]} width={item.width} height={item.height} loading="lazy" decoding="async" />
+            <div className="card-bottom card-bottom--stat">
+              <span className="card-big-number">30+</span>
+              <span className="card-stat-copy">
+                <span className="card-stat-title">{t.developments}</span>
+                <span className="card-stat-sub">{t.acrossMexico}</span>
               </span>
-              <span className="gallery-tile-caption"><strong>{item[lang]}</strong><span aria-hidden="true">↗</span></span>
-            </button>
-          ))}
-        </div>
-        <div className="gallery-bottom">
-          <small>{t.pricingNote}</small>
-          <button type="button" className="primary-cta gallery-cta" onClick={scrollToForm}>{t.moreInfo}<span aria-hidden="true">↗</span></button>
+            </div>
+          </HoverVideoCard>
+
+          <HoverVideoCard image="/gallery/amenidades.webp" imageAlt={t.amenitiesAlt} video={resortVideo} slot="hover2">
+            <div className="card-top">
+              <span className="card-kicker">{t.builtYour}</span>
+              <span className="card-heading">{t.home}</span>
+            </div>
+            <div className="card-bottom card-bottom--resort">
+              <span className="card-small">{t.live}</span>
+              <span className="card-resort serif-accent">{t.resort}</span>
+              <span className="card-small">{t.style}</span>
+            </div>
+          </HoverVideoCard>
         </div>
       </section>
 
-      <dialog ref={galleryDialogRef} className="gallery-dialog" aria-label={t.galleryTitle}
+      {/* GALLERY */}
+      <section id="galeria" className="gallery-section" aria-labelledby="gallery-title">
+        <div className="wrap gallery-inner">
+          <div className="gallery-head reveal">
+            <div className="gallery-head-copy">
+              <span className="eyebrow-gold">{t.galleryEyebrow}</span>
+              <h2 id="gallery-title">{t.galleryTitle} <span className="serif-accent">{t.galleryTitleAccent}</span></h2>
+              <p>{t.gallerySubtitle}</p>
+            </div>
+            <div className="segmented" role="tablist" aria-label={t.galleryTabsLabel}>
+              <span className={`segmented-indicator${galleryTab === 'amenities' ? ' is-right' : ''}`} aria-hidden="true" />
+              <button
+                type="button"
+                role="tab"
+                id="tab-homes"
+                aria-controls="gallery-panel"
+                aria-selected={galleryTab === 'homes'}
+                className={galleryTab === 'homes' ? 'is-active' : ''}
+                onClick={() => changeGalleryTab('homes')}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></svg>
+                {t.galleryHomes} <span className="segmented-count">{homes.length}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="tab-amenities"
+                aria-controls="gallery-panel"
+                aria-selected={galleryTab === 'amenities'}
+                className={galleryTab === 'amenities' ? 'is-active' : ''}
+                onClick={() => changeGalleryTab('amenities')}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M2 19c2 0 2-1.5 4-1.5S8 19 10 19s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5" /><path d="M7 15V5a2 2 0 014 0" /><path d="M15 15V5a2 2 0 014 0" /><path d="M7 9h8" /></svg>
+                {t.galleryAmenities} <span className="segmented-count">{amenities.length}</span>
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="gallery-panel"
+            className="gallery-grid"
+            role="tabpanel"
+            aria-labelledby={galleryTab === 'homes' ? 'tab-homes' : 'tab-amenities'}
+            key={galleryTab}
+          >
+            {filteredGallery.map((item, index) => (
+              <button
+                type="button"
+                key={item.src}
+                className={`tile ${tileLayout(index, filteredGallery.length)}`}
+                style={{ animationDelay: `${Math.min(index, 6) * 80}ms` }}
+                aria-label={`${t.galleryView}: ${item[lang]}`}
+                onClick={() => openGalleryImage(index)}
+              >
+                <img src={item.src} alt="" width={item.width} height={item.height} loading="lazy" decoding="async" />
+                <span className="tile-caption">
+                  <span>
+                    <strong>{item[lang]}</strong>
+                    <small>{item.description[lang]}</small>
+                  </span>
+                  <span className="tile-zoom" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7 17L17 7M9 7h8v8" /></svg>
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="gallery-foot reveal">
+            <small>{t.pricingNote}</small>
+            <button type="button" className="btn btn-gold" onClick={scrollToForm}>
+              {t.moreInfo}<span className="btn-arrow"><ArrowRight /></span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* LIGHTBOX */}
+      <dialog
+        ref={galleryDialogRef}
+        className="lightbox"
+        aria-label={t.galleryTitle}
         onClick={(event) => { if (event.target === event.currentTarget) galleryDialogRef.current?.close(); }}
         onKeyDown={(event) => {
-          if (event.key === 'ArrowRight') setActiveImage((i) => (i + 1) % filteredGallery.length);
-          if (event.key === 'ArrowLeft') setActiveImage((i) => (i - 1 + filteredGallery.length) % filteredGallery.length);
-        }}>
-        <div className="gallery-dialog-inner">
-          <div className="gallery-dialog-top"><span>CIUDAD MADERAS / {lang === 'es' ? 'LA COLECCIÓN' : 'THE COLLECTION'}</span><span>{(activeImage + 1).toString().padStart(2, '0')} / {filteredGallery.length.toString().padStart(2, '0')}</span></div>
-          <button type="button" className="gallery-close" aria-label={t.galleryClose} onClick={() => galleryDialogRef.current?.close()}>✕</button>
-          <figure>
-            <img key={filteredGallery[activeImage].src} src={filteredGallery[activeImage].src} alt={filteredGallery[activeImage][lang]} />
-            <figcaption aria-live="polite"><strong>{filteredGallery[activeImage][lang]}</strong><span>{filteredGallery[activeImage].description[lang]}</span><small>{filteredGallery[activeImage].render ? t.renderLabel : (lang === 'es' ? 'Fotografía del destino' : 'Destination photography')}</small></figcaption>
+          if (event.key === 'ArrowRight') nextImage();
+          if (event.key === 'ArrowLeft') previousImage();
+        }}
+      >
+        {currentImage && (
+          <figure className="lightbox-figure">
+            <div className="lightbox-top">
+              <span>{t.galleryCollection} / {galleryTab === 'homes' ? t.galleryHomes.toUpperCase() : t.galleryAmenities.toUpperCase()}</span>
+              <span className="lightbox-top-right">
+                <span className="lightbox-counter">{pad(activeImage + 1)} / {pad(filteredGallery.length)}</span>
+                <button type="button" className="round-btn" aria-label={t.galleryClose} onClick={() => galleryDialogRef.current?.close()}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </span>
+            </div>
+            <img key={currentImage.src} className="lightbox-image" src={currentImage.src} alt={currentImage[lang]} />
+            <figcaption className="lightbox-caption" aria-live="polite">
+              <span className="lightbox-caption-copy">
+                <strong>{currentImage[lang]}</strong>
+                <span>{currentImage.description[lang]}</span>
+                <small>{currentImage.render ? t.renderLabel : t.photoLabel}</small>
+              </span>
+              {filteredGallery.length > 1 && (
+                <span className="lightbox-nav">
+                  <button type="button" className="round-btn" aria-label={t.galleryPrevious} onClick={previousImage}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                  </button>
+                  <button type="button" className="round-btn" aria-label={t.galleryNext} onClick={nextImage}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                  </button>
+                </span>
+              )}
+            </figcaption>
           </figure>
-          <button type="button" className="gallery-nav gallery-prev" aria-label={t.galleryPrevious} onClick={() => setActiveImage((i) => (i - 1 + filteredGallery.length) % filteredGallery.length)}>‹</button>
-          <button type="button" className="gallery-nav gallery-next" aria-label={t.galleryNext} onClick={() => setActiveImage((i) => (i + 1) % filteredGallery.length)}>›</button>
-          <div className="gallery-thumbnails" role="group" aria-label={lang === 'es' ? 'Seleccionar imagen' : 'Choose image'}>
-            {filteredGallery.map((item, index) => <button type="button" key={item.src} aria-label={`${t.galleryView}: ${item[lang]}`} aria-pressed={index === activeImage} onClick={() => setActiveImage(index)}><img src={item.src} alt="" /></button>)}
-          </div>
+        )}
+      </dialog>
+
+      {/* PRIVACY NOTICE */}
+      <dialog
+        ref={privacyDialogRef}
+        className="privacy-dialog"
+        aria-labelledby="privacy-title"
+        onClick={(event) => { if (event.target === event.currentTarget) privacyDialogRef.current?.close(); }}
+      >
+        <div className="privacy-head">
+          <h2 id="privacy-title">{t.privacyNotice.title}</h2>
+          <button type="button" className="round-btn" aria-label={t.privacyClose} onClick={() => privacyDialogRef.current?.close()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <div className="privacy-body">
+          <small className="privacy-updated">{t.privacyNotice.updated}</small>
+          {t.privacyNotice.sections.map((section) => (
+            <section key={section.heading}>
+              <h3>{section.heading}</h3>
+              {section.paragraphs.map((text) => <p key={text}>{text}</p>)}
+              {section.items && <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>}
+            </section>
+          ))}
+          <p className="privacy-closing">{t.privacyNotice.closing}</p>
         </div>
       </dialog>
 
-      {/* FORM SECTION */}
-      <section
-        id="contact-form"
-        className="form-section"
-        style={{ backgroundImage: "url('/gallery/cancun.webp')" }}
-      >
-        <div className="form-overlay" />
-        <div className="form-inner">
-          <form id="lead-form" className="form-form reveal" style={{ transitionDelay: '0s' }} onSubmit={submitLead} noValidate>
-            <div className="form-titles">
-              <span className="form-title1">{t.formTitle1}</span>
-              <span className="form-title2">
-                {lang === 'en'
-                  ? <>and <strong>we'll take it from there.</strong></>
-                  : <>y <strong>nosotros nos encargamos del resto.</strong></>
-                }
+      {/* FORM */}
+      <section id="contact-form" className="form-section">
+        <div className="form-bg" style={{ backgroundImage: "url('/gallery/cancun.webp')" }} aria-hidden="true" />
+        <div className="form-shade" aria-hidden="true" />
+
+        <div className="wrap form-grid">
+          <div className="form-pitch reveal">
+            <span className="eyebrow-gold">{t.formEyebrow}</span>
+            <h2>{t.formTitle1} <span className="serif-accent">{t.formTitle2}</span></h2>
+            <div className="big-price">
+              <span className="eyebrow-muted">{t.monthlyFrom}</span>
+              <span className="big-price-row">
+                <span className="big-price-dollar">$</span>
+                <span className="big-price-main">149</span>
+                <span className="big-price-side"><strong>USD*</strong><span>{t.perMonth}</span></span>
               </span>
             </div>
-            
-            <div className="form-inputs">
-              <label>{t.fullName}<input id="full-name" name="fullName" autoComplete="name" required type="text" placeholder={t.fullName} /></label>
-              <label>{t.email}<input name="email" required type="email" inputMode="email" autoComplete="email" placeholder={t.email} /></label>
-              
-              <div className="form-field">
-                <label htmlFor="phone-number">{t.phone}</label>
-                <div className="phone-input-container">
-                  <PhoneCodePicker
-                    options={countryCodes}
-                    value={selectedLada}
-                    onChange={handleLadaChange}
-                    label={t.phoneCodeLabel}
-                    searchLabel={t.phoneSearch}
-                    emptyLabel={t.phoneNoResults}
-                  />
-                  <input
-                    id="phone-number"
-                    name="phone"
-                    required
-                    autoComplete="tel-national"
-                    inputMode="numeric"
-                    type="tel"
-                    value={phoneValue}
-                    onChange={handlePhoneChange}
-                    placeholder={phoneRules.example}
-                    aria-describedby="phone-hint"
-                  />
+            <ul className="benefit-list">
+              {t.benefits.map((benefit) => (
+                <li key={benefit}><b><CheckIcon /></b>{benefit}</li>
+              ))}
+            </ul>
+            <small className="form-note">{t.pricingNote}</small>
+          </div>
+
+          <div className="form-card reveal">
+            {formStatus === 'sent' ? (
+              <div className="form-success" role="status">
+                <span className="form-success-icon"><CheckIcon size={32} strokeWidth={2.6} /></span>
+                <span className="form-success-title">{t.thanksTitle}</span>
+                <span className="form-success-text">{formMessage}</span>
+                <button type="button" className="btn btn-outline" onClick={resetForm}>{t.sendAnother}</button>
+              </div>
+            ) : (
+              <form id="lead-form" className="lead-form" onSubmit={submitLead} noValidate>
+                <div className="form-card-head">
+                  <span className="form-card-title">{t.formCardTitle}</span>
+                  <span className="form-card-text">{t.formCardText}</span>
                 </div>
-                {phoneLib && (
-                  <small id="phone-hint" className="phone-hint" aria-live="polite">
-                    {phoneRules.min === phoneRules.max
-                      ? `${phoneValue.length}/${phoneRules.max} ${t.phoneDigits}`
-                      : `${phoneRules.min}–${phoneRules.max} ${t.phoneDigits}`}
-                  </small>
+
+                <div className="field">
+                  <label className="field-label" htmlFor="full-name">{t.fullName}</label>
+                  <div className="input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg>
+                    <input id="full-name" name="fullName" autoComplete="name" required type="text" placeholder={t.fullNamePlaceholder} />
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label className="field-label" htmlFor="email">{t.email}</label>
+                  <div className="input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>
+                    <input id="email" name="email" required type="email" inputMode="email" autoComplete="email" placeholder={t.emailPlaceholder} />
+                  </div>
+                </div>
+
+                <div className="field">
+                  <div className="field-label-row">
+                    <label className="field-label" htmlFor="phone-number">{t.phone}</label>
+                    {phoneHint && <small id="phone-hint" className="phone-hint" aria-live="polite">{phoneHint}</small>}
+                  </div>
+                  <div className={`phone-field${pickerOpen ? ' is-open' : ''}`}>
+                    <PhoneCodePicker
+                      options={countryCodes}
+                      value={selectedLada}
+                      onChange={handleLadaChange}
+                      onOpenChange={setPickerOpen}
+                      label={t.phoneCodeLabel}
+                      searchLabel={t.phoneSearch}
+                      emptyLabel={t.phoneNoResults}
+                    />
+                    <input
+                      id="phone-number"
+                      name="phone"
+                      required
+                      autoComplete="tel-national"
+                      inputMode="numeric"
+                      type="tel"
+                      value={phoneValue}
+                      onChange={handlePhoneChange}
+                      placeholder={phoneRules.example}
+                      aria-describedby={phoneHint ? 'phone-hint' : undefined}
+                    />
+                  </div>
+                </div>
+
+                <label className="consent">
+                  <input name="consent" required type="checkbox" />
+                  <span className="consent-box"><CheckIcon size={13} strokeWidth={3.4} /></span>
+                  <span>{t.consent} <button type="button" className="link-btn" onClick={openPrivacy}>{t.privacy}</button></span>
+                </label>
+
+                {errorText && (
+                  <div className="form-error" role="alert">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.5v.5" /></svg>
+                    {errorText}
+                  </div>
                 )}
-              </div>
 
-            </div>
-
-            <div className="form-actions">
-              <label className="checkbox-label">
-                <input name="consent" required type="checkbox" />
-                <span>{t.consent}</span>
-              </label>
-              {formMessage && (
-                <span role="status" aria-live="polite" className={`form-message ${formStatus}`}>{formMessage}</span>
-              )}
-              <button type="submit" disabled={formStatus === 'sending'}>
-                {formStatus === 'sending' ? t.sending : t.send}
-              </button>
-            </div>
-          </form>
-
-          <div className="form-pricing reveal" style={{ transitionDelay: '0.18s' }}>
-            <div className="price-container">
-              <span className="from-label">{t.from}</span>
-              <span className="price-dollar">$</span>
-              <span className="price-main">149</span>
-              <div className="price-right">
-                <span className="usd-label">USD *</span>
-                <span className="monthly-label">{t.monthlyPayment}</span>
-              </div>
-            </div>
-            <span className="no-credit">{t.noCredit}</span>
-            <p className="pricing-note">{t.pricingNote}</p>
+                <button type="submit" className="submit-btn" disabled={formStatus === 'sending'}>
+                  {formStatus === 'sending' ? t.sending : t.send}
+                  {formStatus !== 'sending' && <span className="btn-arrow btn-arrow--gold"><ArrowRight /></span>}
+                </button>
+                <span className="form-privacy">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>
+                  <span>{t.privacyLead} <button type="button" className="link-btn" onClick={openPrivacy}>{t.privacy}</button>.</span>
+                </span>
+              </form>
+            )}
           </div>
         </div>
       </section>
 
-      <footer className="footer-note">
-        {t.footer}
+      <footer className="site-footer">
+        <div className="wrap">
+          {t.footer.split(' | ').map((part, index) => (
+            <span key={part}>
+              {index > 0 && ' | '}
+              {part === t.privacy
+                ? <button type="button" className="link-btn link-btn--footer" onClick={openPrivacy}>{part}</button>
+                : part}
+            </span>
+          ))}
+        </div>
       </footer>
+
+      <button type="button" className="float-cta" onClick={scrollToForm} aria-controls="lead-form" aria-label={t.moreInfo}>
+        <span className="float-cta-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 2H4a2 2 0 00-2 2v18l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2z" /></svg>
+        </span>
+        <span className="float-cta-label">{t.moreInfo}</span>
+      </button>
     </main>
   );
 }
