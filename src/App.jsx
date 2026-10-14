@@ -1109,7 +1109,7 @@ function App() {
       <section className="cards-section" style={{ backgroundImage: "url('/gallery/family-club.webp')" }}>
         <div className="cards-overlay" aria-hidden="true" />
         <div className="wrap cards-grid">
-          <HoverVideoCard image="/gallery/mapa.webp" imageAlt={t.mapAlt} video={mapVideo} slot="hover1">
+          <HoverVideoCard image="/gallery/mapa.webp" imageAlt={t.mapAlt} video={mapVideo} slot="hover2">
             <div className="card-top">
               <span className="card-kicker">{t.anOptionFor}</span>
               <span className="card-heading">{t.everyone}</span>
@@ -1123,7 +1123,7 @@ function App() {
             </div>
           </HoverVideoCard>
 
-          <HoverVideoCard image="/gallery/amenidades.webp" imageAlt={t.amenitiesAlt} video={resortVideo} slot="hover2">
+          <HoverVideoCard image="/gallery/amenidades.webp" imageAlt={t.amenitiesAlt} video={resortVideo} slot="hover1">
             <div className="card-top">
               <span className="card-kicker">{t.builtYour}</span>
               <span className="card-heading">{t.home}</span>
