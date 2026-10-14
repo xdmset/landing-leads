@@ -397,8 +397,9 @@ function HoverVideoCard({ image, imageAlt, video, slot, children }) {
 
 /* ---------- Gallery data ---------- */
 
-// category: 'homes' → toggle "Casas"; 'amenities' → toggle "Amenidades".
-// To add photos, drop them in /public/gallery and add an entry here. The first one of each category shows large.
+// Fallback gallery, used only if the backend cannot provide the processed photos from the content hub
+// (see galleryPhotos in backend/server.js to change which photos are shown).
+// category: 'homes' → toggle "Casas"; 'amenities' → toggle "Amenidades". The first one of each category shows large.
 const galleryImages = [
   { src: '/gallery/antara.webp', category: 'homes', es: 'Casa modelo Antara', en: 'Antara home model', description: { es: 'Arquitectura para una nueva etapa.', en: 'Architecture for a new chapter.' }, width: 1600, height: 1600, render: true },
   { src: '/gallery/aqua.webp', category: 'homes', es: 'Casa modelo Aqua', en: 'Aqua home model', description: { es: 'Una fachada con personalidad propia.', en: 'A home with its own personality.' }, width: 1202, height: 1600, render: true },
@@ -406,6 +407,62 @@ const galleryImages = [
   { src: '/gallery/family-club.webp', category: 'amenities', es: 'Family Club · Cancún', en: 'Family Club · Cancún', description: { es: 'La vida que imaginabas, en el Caribe mexicano.', en: 'The lifestyle you imagined, in the Mexican Caribbean.' }, width: 1600, height: 900, render: true },
   { src: '/gallery/amenidades.webp', category: 'amenities', es: 'Vive estilo resort', en: 'Live resort style', description: { es: 'Amenidades de nuestros desarrollos.', en: 'Amenities across our developments.' }, render: true },
 ];
+
+const toSrcSet = (variants, format) => variants
+  .filter((variant) => variant.format === format)
+  .sort((a, b) => a.width - b.width)
+  .map((variant) => `${videoApiBase}${variant.url} ${variant.width}w`)
+  .join(', ');
+
+const largestVariant = (variants, format) => variants
+  .filter((variant) => variant.format === format)
+  .sort((a, b) => b.width - a.width)[0];
+
+// Turns an item from /api/gallery into what the gallery renders: responsive AVIF/WebP sets for the
+// tiles (card) and for the lightbox (detail).
+const normalizeGalleryItem = (item) => {
+  const card = largestVariant(item.card || [], 'webp');
+  if (!card) return null;
+
+  const detail = largestVariant(item.detail || [], 'webp');
+
+  return {
+    ...item,
+    src: `${videoApiBase}${card.url}`,
+    cardSet: { avif: toSrcSet(item.card, 'avif'), webp: toSrcSet(item.card, 'webp') },
+    detailSrc: detail ? `${videoApiBase}${detail.url}` : undefined,
+    detailSet: { avif: toSrcSet(item.detail || [], 'avif'), webp: toSrcSet(item.detail || [], 'webp') },
+  };
+};
+
+// Photos come from the content hub (processed versions, served by the backend). Each category falls back
+// to the local images if the backend has nothing for it.
+function useGalleryItems(fallback) {
+  const [remote, setRemote] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`${videoApiBase}/api/gallery`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Gallery unavailable'))))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) setRemote(data.map(normalizeGalleryItem).filter(Boolean));
+      })
+      .catch((err) => console.error('No se pudo cargar la galería del backend:', err));
+
+    return () => { cancelled = true; };
+  }, []);
+
+  return useMemo(() => ['homes', 'amenities'].flatMap((category) => {
+    const fromBackend = remote.filter((item) => item.category === category);
+    return fromBackend.length ? fromBackend : fallback.filter((item) => item.category === category);
+  }), [remote, fallback]);
+}
+
+// Big tiles (feature/wide/tall/full) get a larger image than the single-cell ones.
+const tileSizes = (layout) => (layout
+  ? '(max-width: 700px) 100vw, 50vw'
+  : '(max-width: 700px) 100vw, (max-width: 1000px) 50vw, 25vw');
 
 // Bento layout: the first image is large, the rest fill the grid without gaps for 1–5 images.
 const tileLayout = (index, total) => {
@@ -712,8 +769,9 @@ function App() {
 
   const t = content[lang];
 
-  const homes = useMemo(() => galleryImages.filter((item) => item.category === 'homes'), []);
-  const amenities = useMemo(() => galleryImages.filter((item) => item.category === 'amenities'), []);
+  const galleryItems = useGalleryItems(galleryImages);
+  const homes = useMemo(() => galleryItems.filter((item) => item.category === 'homes'), [galleryItems]);
+  const amenities = useMemo(() => galleryItems.filter((item) => item.category === 'amenities'), [galleryItems]);
   const filteredGallery = galleryTab === 'homes' ? homes : amenities;
   const currentImage = filteredGallery[Math.min(activeImage, filteredGallery.length - 1)];
 
@@ -1182,27 +1240,43 @@ function App() {
             aria-labelledby={galleryTab === 'homes' ? 'tab-homes' : 'tab-amenities'}
             key={galleryTab}
           >
-            {filteredGallery.map((item, index) => (
-              <button
-                type="button"
-                key={item.src}
-                className={`tile ${tileLayout(index, filteredGallery.length)}`}
-                style={{ animationDelay: `${Math.min(index, 6) * 80}ms` }}
-                aria-label={`${t.galleryView}: ${item[lang]}`}
-                onClick={() => openGalleryImage(index)}
-              >
-                <img src={item.src} alt="" width={item.width} height={item.height} loading="lazy" decoding="async" />
-                <span className="tile-caption">
-                  <span>
-                    <strong>{item[lang]}</strong>
-                    <small>{item.description[lang]}</small>
+            {filteredGallery.map((item, index) => {
+              const layout = tileLayout(index, filteredGallery.length);
+
+              return (
+                <button
+                  type="button"
+                  key={item.src}
+                  className={`tile ${layout}`}
+                  style={{ animationDelay: `${Math.min(index, 6) * 80}ms` }}
+                  aria-label={`${t.galleryView}: ${item[lang]}`}
+                  onClick={() => openGalleryImage(index)}
+                >
+                  <picture>
+                    {item.cardSet && <source type="image/avif" srcSet={item.cardSet.avif} sizes={tileSizes(layout)} />}
+                    <img
+                      src={item.src}
+                      srcSet={item.cardSet?.webp}
+                      sizes={item.cardSet ? tileSizes(layout) : undefined}
+                      alt=""
+                      width={item.width}
+                      height={item.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                  <span className="tile-caption">
+                    <span>
+                      <strong>{item[lang]}</strong>
+                      <small>{item.description[lang]}</small>
+                    </span>
+                    <span className="tile-zoom" aria-hidden="true">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7 17L17 7M9 7h8v8" /></svg>
+                    </span>
                   </span>
-                  <span className="tile-zoom" aria-hidden="true">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7 17L17 7M9 7h8v8" /></svg>
-                  </span>
-                </span>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           <div className="gallery-foot reveal">
@@ -1236,7 +1310,16 @@ function App() {
                 </button>
               </span>
             </div>
-            <img key={currentImage.src} className="lightbox-image" src={currentImage.src} alt={currentImage[lang]} />
+            <picture key={currentImage.src}>
+              {currentImage.detailSet && <source type="image/avif" srcSet={currentImage.detailSet.avif} sizes="100vw" />}
+              <img
+                className="lightbox-image"
+                src={currentImage.detailSrc || currentImage.src}
+                srcSet={currentImage.detailSet?.webp}
+                sizes={currentImage.detailSet ? '100vw' : undefined}
+                alt={currentImage[lang]}
+              />
+            </picture>
             <figcaption className="lightbox-caption" aria-live="polite">
               <span className="lightbox-caption-copy">
                 <strong>{currentImage[lang]}</strong>

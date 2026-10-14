@@ -1138,3 +1138,7 @@
   .privacy-head { padding: 16px 18px; }
   .privacy-body { padding: 18px 18px 26px; }
 }
+
+/* The <picture> wrapper must not take part in the layout of tiles and the lightbox. */
+.tile picture,
+.lightbox-figure picture { display: contents; }
