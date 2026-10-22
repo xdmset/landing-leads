@@ -37,6 +37,10 @@ const MONGO_URI = process.env.MONGO_URI;
 const DB_NAME = process.env.DB_NAME || 'Studio';
 const LEADS_COLLECTION = process.env.LEADS_COLLECTION || 'landing_clients';
 const CONTENT_COLLECTION = process.env.CONTENT_COLLECTION || 'Contenido';
+// Maderas Studio campaign webhook: every saved lead is also sent there (POST, JSON).
+const CAMPAIGN_WEBHOOK_URL = 'https://maderasstudio.com/api/campanas/webhook/mkc_bd984765662555d9bb42f615d04d6b98b08fbb3692b8260d';
+const CAMPAIGN_ORIGIN = 'miterrenoenmexico.com';
+const CAMPAIGN_WEBHOOK_ATTEMPTS = 3;
 
 const allowedVideos = new Set([
   'Carlos Subt.mp4',
@@ -132,6 +136,55 @@ const ensureLeadIndexes = async (collection) => {
   await leadIndexesPromise;
 };
 
+const sendLeadToCampaign = async (collection, leadId, lead) => {
+  const body = JSON.stringify({
+    // The campaign uses leadId to ignore repeats, so retrying or re-sending never duplicates a lead.
+    leadId: String(leadId),
+    nombre: lead.fullName,
+    telefono: lead.phone,
+    lada: lead.phoneCode,
+    correo: lead.email,
+    origen: CAMPAIGN_ORIGIN,
+    // Any other field is stored by the campaign as an extra field of the lead.
+    idioma: lead.language,
+    fuente: lead.howHeard,
+    pagina: lead.page,
+    consentimiento: lead.consent,
+  });
+  let lastError = 'unknown error';
+
+  for (let attempt = 1; attempt <= CAMPAIGN_WEBHOOK_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(CAMPAIGN_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (response.ok) {
+        await collection.updateOne({ _id: leadId }, { $set: { campaignWebhook: { ok: true, attempts: attempt, at: new Date() } } });
+        return;
+      }
+
+      lastError = `HTTP ${response.status}`;
+
+      // A rejected request (bad token, bad data) will not improve by retrying; 429 and 5xx might.
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) break;
+    } catch (error) {
+      lastError = error.message;
+    }
+
+    if (attempt < CAMPAIGN_WEBHOOK_ATTEMPTS) {
+      await new Promise((resolve) => { setTimeout(resolve, attempt * 1500); });
+    }
+  }
+
+  console.error(`Campaign webhook failed for lead ${leadId}: ${lastError}`);
+  // Kept on the lead so it can be re-sent later (same leadId, so it cannot duplicate).
+  await collection.updateOne({ _id: leadId }, { $set: { campaignWebhook: { ok: false, error: lastError, at: new Date() } } }).catch(() => {});
+};
+
 const createLead = async (payload) => {
   const fullName = normalizeText(payload.fullName);
   const email = normalizeText(payload.email).toLowerCase();
@@ -185,6 +238,10 @@ const createLead = async (payload) => {
 
   try {
     const result = await collection.insertOne(document);
+
+    // Not awaited: the visitor should not wait for the campaign, and a failure is stored on the lead.
+    sendLeadToCampaign(collection, result.insertedId, document)
+      .catch((error) => console.error('Campaign webhook error:', error));
 
     return result.insertedId;
   } catch (error) {
